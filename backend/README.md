@@ -1,0 +1,54 @@
+# backend
+
+The tutoring agent behind the extension. FastAPI, one route that matters.
+
+## Run
+
+```
+uv sync                                   # first time: creates .venv, installs
+uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
+```
+
+Needs `.env` (see `.env.example`) and the local Supabase stack running
+(`npm run db:start` at the repo root), since it verifies Supabase tokens.
+
+## Switching the model vendor
+
+`LLM_PROVIDER=anthropic` or `LLM_PROVIDER=openai` in `.env`, then restart.
+Nothing else changes — not the extension, not the `/chat` contract, not the
+tutor's behaviour, which lives in `app/prompt.py` and is shared by both.
+
+| | `app/providers/claude.py` | `app/providers/gpt.py` |
+| --- | --- | --- |
+| API | Messages (beta, for refusal fallback) | Responses |
+| Prompt caching | explicit breakpoint after the problem statement | automatic on matching prefixes |
+| Refusal | server-side fallback to another model | reported as a refusal part; user sees a fixed message |
+| Key | `ANTHROPIC_API_KEY` | `OPENAI_API_KEY` |
+
+`GET /health` reports which provider and model are active.
+
+## Routes
+
+| Route | Auth | Does |
+| --- | --- | --- |
+| `GET /health` | no | liveness + which model is configured |
+| `GET /me` | bearer | echoes the verified user — test auth without a Claude call |
+| `POST /chat` | bearer | transcript + problem + code in, Claude's reply out |
+
+Interactive docs at `http://127.0.0.1:8000/docs`.
+
+## Try it by hand
+
+```
+TOKEN=<a user's access token>
+curl -s http://127.0.0.1:8000/me -H "Authorization: Bearer $TOKEN"
+
+curl -s http://127.0.0.1:8000/chat \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Where do I start?"}],
+       "problem":{"slug":"two-sum","title":"Two Sum","difficulty":"Easy",
+                  "statement":"Given an array of integers nums and an integer target..."}}'
+```
+
+Every chat logs one line with the user id and token usage — the seed of the
+usage log that quotas will be built on.

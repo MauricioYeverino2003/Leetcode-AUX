@@ -1,0 +1,313 @@
+/*
+ * Side panel styles — the Tailwind classes from the original Next.js app
+ * translated to plain CSS, same palette. Tailwind is not wired into this build yet; revisit when
+ * the chat UI gives it enough surface to be worth it.
+ */
+
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #171717;
+  --muted: rgba(0, 0, 0, 0.6);
+  --line: rgba(0, 0, 0, 0.15);
+  --line-strong: rgba(0, 0, 0, 0.5);
+  --hover: rgba(0, 0, 0, 0.05);
+  --error: #dc2626;
+  --info: #15803d;
+  --warn: #b45309;
+  --easy: #16a34a;
+  --medium: #b45309;
+  --hard: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a0a0a;
+    --fg: #ededed;
+    --muted: rgba(255, 255, 255, 0.6);
+    --line: rgba(255, 255, 255, 0.2);
+    --line-strong: rgba(255, 255, 255, 0.5);
+    --hover: rgba(255, 255, 255, 0.1);
+    --error: #f87171;
+    --info: #4ade80;
+    --warn: #fbbf24;
+    --easy: #4ade80;
+    --medium: #fbbf24;
+    --hard: #f87171;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p,
+ul {
+  margin: 0;
+}
+
+/* ---- layout ------------------------------------------------------------ */
+
+.screen {
+  min-height: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.screen-center {
+  align-items: center;
+  justify-content: center;
+}
+
+/* The signed-in screen is a fixed-height column so the chat can scroll
+   internally instead of growing the page. */
+.screen-fill {
+  height: 100%;
+  overflow: hidden;
+}
+
+.login {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---- type -------------------------------------------------------------- */
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.title-sm {
+  font-size: 1.125rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+/* ---- form -------------------------------------------------------------- */
+
+.form {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-weight: 500;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--line-strong);
+}
+
+.notice-error {
+  color: var(--error);
+}
+
+.notice-info {
+  color: var(--info);
+}
+
+.notice-warn {
+  color: var(--warn);
+}
+
+.actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+}
+
+.actions .btn {
+  flex: 1;
+}
+
+/* ---- buttons ----------------------------------------------------------- */
+
+.btn {
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--line);
+  color: inherit;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ---- context strip ----------------------------------------------------- */
+
+.context {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.difficulty {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.difficulty-easy {
+  color: var(--easy);
+}
+
+.difficulty-medium {
+  color: var(--medium);
+}
+
+.difficulty-hard {
+  color: var(--hard);
+}
+
+/* ---- chat -------------------------------------------------------------- */
+
+.chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.turns {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.turn {
+  max-width: 92%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.turn-user {
+  align-self: flex-end;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.turn-assistant {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+}
+
+.composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.composer-input {
+  flex: 1;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.4;
+}

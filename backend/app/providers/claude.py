@@ -1,0 +1,127 @@
+"""
+Anthropic provider.
+
+Prompt layout, chosen for prompt caching — the cache is a prefix match, so
+stable content goes first and volatile content last:
+
+    system[0]  tutoring rules            never changes
+    system[1]  the problem statement     changes per problem   <- cache breakpoint
+    messages   the transcript            changes per turn
+    last turn  the user's current code   changes per keystroke
+
+The code rides in the final user turn rather than the system prompt precisely
+because it changes every message; putting it earlier would invalidate the
+cache on every turn.
+"""
+
+import anthropic
+from anthropic import AsyncAnthropic
+from anthropic.types.beta import BetaMessage
+
+from ..config import settings
+from ..prompt import SYSTEM_PROMPT, code_block, problem_block
+from ..schemas import ChatRequest, ChatResponse, Usage
+from .base import CUT_SHORT_MARKER, REFUSAL_REPLY, NoCredentials, ProviderError
+
+
+class ClaudeProvider:
+    name = "anthropic"
+
+    def __init__(self) -> None:
+        self.model = settings.anthropic_model
+        self._client: AsyncAnthropic | None = None
+
+    def _get_client(self) -> AsyncAnthropic:
+        """Built on first use so a missing key fails on the first chat with a
+        clear message instead of preventing the server from starting."""
+        if self._client is not None:
+            return self._client
+
+        if settings.anthropic_api_key:
+            self._client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+            return self._client
+
+        # Zero-arg: the SDK resolves ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN
+        # from the process environment, or an `ant auth login` profile. It does
+        # not complain if none exist — it raises a bare TypeError on the first
+        # request instead — so check the same three sources its request-time
+        # check looks at, and fail with something nameable.
+        c = AsyncAnthropic()
+        if c.api_key is None and c.auth_token is None and getattr(c, "_token_cache", None) is None:
+            raise NoCredentials("No Anthropic credentials: set ANTHROPIC_API_KEY in backend/.env")
+        self._client = c
+        return c
+
+    async def chat(self, request: ChatRequest) -> ChatResponse:
+        try:
+            response = await self._get_client().beta.messages.create(
+                model=self.model,
+                max_tokens=16000,
+                # Claude Opus 5 has thinking on by default (adaptive). Not
+                # configured here on purpose; `output_config={"effort": ...}`
+                # is the knob to tune once there is real usage to measure.
+                #
+                # Refusal fallback: if a safety classifier declines the
+                # request, the API re-runs it on Anthropic's recommended
+                # fallback model server-side instead of returning the refusal.
+                betas=["server-side-fallback-2026-07-01"],
+                fallbacks="default",
+                system=[
+                    {"type": "text", "text": SYSTEM_PROMPT},
+                    {
+                        "type": "text",
+                        "text": problem_block(request),
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                ],
+                messages=_build_messages(request),
+            )
+        except anthropic.AuthenticationError:
+            raise ProviderError(502, "The backend's Anthropic key was rejected") from None
+        except anthropic.RateLimitError:
+            raise ProviderError(429, "Rate limited by Anthropic — try again shortly") from None
+        except anthropic.APIStatusError as e:
+            raise ProviderError(
+                502,
+                f"Anthropic API error ({e.status_code})",
+                log=f"Anthropic API error {e.status_code}: {e.message}",
+            ) from None
+        except anthropic.APIConnectionError:
+            raise ProviderError(502, "Could not reach Anthropic") from None
+
+        usage = response.usage
+        return ChatResponse(
+            reply=_reply_text(response),
+            model=response.model,
+            usage=Usage(
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
+                cache_read_input_tokens=usage.cache_read_input_tokens or 0,
+                cache_creation_input_tokens=usage.cache_creation_input_tokens or 0,
+            ),
+        )
+
+
+def _build_messages(request: ChatRequest) -> list[dict]:
+    history = [{"role": m.role, "content": m.content} for m in request.messages[:-1]]
+    last = request.messages[-1]
+
+    # The current code and the message travel as two text blocks in one turn,
+    # so the model sees them together without us splicing strings.
+    content: list[dict] = []
+    if code := code_block(request):
+        content.append({"type": "text", "text": code})
+    content.append({"type": "text", "text": last.content})
+
+    return [*history, {"role": "user", "content": content}]
+
+
+def _reply_text(response: BetaMessage) -> str:
+    if response.stop_reason == "refusal":
+        return REFUSAL_REPLY
+
+    text = "".join(block.text for block in response.content if block.type == "text")
+
+    if response.stop_reason == "max_tokens":
+        text += CUT_SHORT_MARKER
+    return text

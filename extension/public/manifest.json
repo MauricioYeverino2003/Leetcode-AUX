@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "LeetCode AUX",
+  "version": "0.2.0",
+  "description": "An AI practice partner that guides you through LeetCode problems instead of handing you the answer.",
+  "minimum_chrome_version": "114",
+  "permissions": ["storage", "sidePanel"],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "http://127.0.0.1:54321/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://leetcode.com/*"],
+      "js": ["main-world.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ],
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "background": {
+    "service_worker": "worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "LeetCode AUX"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "leetcode-aux",
+  "private": true,
+  "description": "Workspace root — holds the local Supabase stack shared by extension/ and backend/",
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset"
+  },
+  "devDependencies": {
+    "supabase": "^2.65.0"
+  }
+}

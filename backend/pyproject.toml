@@ -1,0 +1,16 @@
+[project]
+name = "leetcode-aux-backend"
+version = "0.1.0"
+description = "LeetCode AUX — the tutoring agent behind the Chrome extension"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "anthropic>=1.0",
+    "pyjwt[crypto]>=2.9",
+    "pydantic-settings>=2.5",
+    "openai>=3.19.2",
+]
+
+[tool.uv]
+package = false
