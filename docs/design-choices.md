@@ -252,6 +252,66 @@ the active provider and model, the OpenAI input shape and reply parsing (text,
 refusal, cut-short) are checked against constructed SDK objects, and a missing
 key yields a 503 on either. Live calls await keys.
 
+**Update 2026-09-29.** OpenAI is the active provider, on its data-sharing
+program (see the next entry). Anthropic stays wired in as the alternative.
+
+---
+
+## Data-sharing disclosure: implied consent in the empty chat
+
+The backend runs on OpenAI's data-sharing program — free daily tokens in
+exchange for letting OpenAI train on the traffic. Users are told this in the
+chat itself before their first message, and sending a message is the act of
+agreeing. The same notice is reachable any time from a Privacy button.
+
+**Context.** OpenAI's Content Sharing Agreement makes the customer warrant that
+end users have been given notice and that consent has been collected, and that
+a copy of the notice will be provided to OpenAI on request. Enrolment is
+org-wide: everything sent through the key is designated content, with no
+per-request opt-out. So the moment anyone other than the developer uses the
+extension, a notice is a contractual obligation, not a courtesy.
+
+**Decision.**
+
+- The notice is the placeholder content of the empty chat — the one place a
+  user is guaranteed to look before typing. It disappears once the first turn
+  exists and reappears whenever the chat is empty (new panel session, new
+  problem).
+- Its wording lives in one component, `extension/src/panel/Notice.tsx`, so
+  there is exactly one Notice and git history is its record.
+- It says what is sent (statement, editor code, chat), what is never sent
+  (login and account details), that OpenAI may train on it, not to include
+  secrets, and that the user must be 13 or older.
+- A Privacy button in the header shows the same text on demand, so it is
+  always findable, not just shown once.
+
+**Why implied rather than express consent.** A checkbox-and-continue gate is
+stronger evidence — it records that a specific user accepted a specific version.
+It also adds a screen, a stored acceptance, and versioning. For a project at
+this scale, an unavoidable notice plus an affirmative act (sending) is
+proportionate, and it is what most consumer software does. The backend already
+logs every chat with the user id and a timestamp, so "sent a message after
+seeing the notice" has a record once that log is persisted.
+
+**Upgrade path, if it is ever needed:** a one-time gate after login, acceptance
+stored in Supabase user metadata (`consent: {version, accepted_at}`) so it
+travels in the access token, and a check in `auth.py` so the backend refuses
+`/chat` without it — enforcement at the money boundary rather than in the UI.
+
+**Obligations this creates.**
+
+- Publishing to the Chrome Web Store additionally needs a privacy policy URL
+  and the listing's data-use disclosure. Same facts, different document.
+- The agreement forbids Protected Health Information and personal data of
+  children under 13 — hence the age line.
+- **The notice is only true for OpenAI.** Anthropic's API does not train on
+  requests by default. Switching `LLM_PROVIDER` back means changing the text,
+  or making the panel read the active provider from `/health` and adapt.
+
+**Cost.** Weaker evidence than a checkbox, and a paragraph of text in what
+should be an inviting empty state. Accepted for now; revisit before any public
+release.
+
 ---
 
 ## First working chat: `POST /chat`, verified by JWKS, deliberately unstreamed

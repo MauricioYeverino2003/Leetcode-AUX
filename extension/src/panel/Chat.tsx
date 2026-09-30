@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { sendChat, type ChatRequest, type ChatTurn } from "../lib/backend";
 import type { Capture } from "../lib/capture";
 import type { CodeCapture } from "../lib/code";
+import { Notice } from "./Notice";
 
 /**
  * The conversation. Held in component state only — nothing is persisted yet,
@@ -70,7 +71,12 @@ export function Chat({ capture, code }: { capture: Capture | null; code: CodeCap
     <section className="chat">
       <div className="turns">
         {turns.length === 0 && !pending ? (
-          <p className="muted small">Ask for a hint. It won't give you the answer.</p>
+          <>
+            <p className="muted small">Ask for a hint. It won't give you the answer.</p>
+            {/* The data-sharing notice sits here until the first message: the
+                one place the user is guaranteed to look before sending. */}
+            <Notice />
+          </>
         ) : null}
 
         {turns.map((turn, i) => (

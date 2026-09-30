@@ -98,6 +98,38 @@ ul {
   gap: 12px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ---- data-sharing notice ----------------------------------------------- */
+
+.notice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.notice-title {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.privacy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 /* ---- type -------------------------------------------------------------- */
 
 .title {

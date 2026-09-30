@@ -5,6 +5,7 @@ import { CAPTURE_KEY, type Capture } from "../lib/capture";
 import { CODE_KEY, type CodeCapture } from "../lib/code";
 import { supabase } from "../lib/supabase";
 import { Chat } from "./Chat";
+import { Notice } from "./Notice";
 
 /** A value in chrome.storage.local, kept live: the content script writes
  *  whenever something changes on the page, and onChanged delivers it here. */
@@ -39,6 +40,7 @@ export function SignedIn({ session }: { session: Session }) {
   const capture = useStored<Capture>(CAPTURE_KEY);
   const code = useStored<CodeCapture>(CODE_KEY);
   const [signingOut, setSigningOut] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -62,9 +64,19 @@ export function SignedIn({ session }: { session: Session }) {
           <h1 className="title title-sm">LeetCode AUX</h1>
           <p className="muted small">{session.user.email}</p>
         </div>
-        <button type="button" onClick={handleSignOut} disabled={signingOut} className="btn btn-secondary btn-sm">
-          {signingOut ? "Signing out…" : "Sign out"}
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            onClick={() => setShowPrivacy((open) => !open)}
+            aria-expanded={showPrivacy}
+            className="btn btn-secondary btn-sm"
+          >
+            Privacy
+          </button>
+          <button type="button" onClick={handleSignOut} disabled={signingOut} className="btn btn-secondary btn-sm">
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>
+        </div>
       </header>
 
       <section className="context">
@@ -75,6 +87,15 @@ export function SignedIn({ session }: { session: Session }) {
         )}
         <CodeLine code={code} problemSlug={capture?.slug ?? null} />
       </section>
+
+      {showPrivacy ? (
+        <section className="privacy">
+          <Notice title="What gets sent, and to whom" />
+          <button type="button" onClick={() => setShowPrivacy(false)} className="btn btn-secondary btn-sm">
+            Close
+          </button>
+        </section>
+      ) : null}
 
       <Chat capture={capture} code={code} />
     </main>
