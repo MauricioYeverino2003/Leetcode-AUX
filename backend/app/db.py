@@ -75,6 +75,28 @@ async def find_solution(token: str, submission_id: int) -> dict | None:
     return rows[0] if rows else None
 
 
+async def find_same_code(token: str, problem_slug: str, code: str) -> dict | None:
+    """A solution the caller already saved for this problem with exactly this
+    code — the same thing submitted again under a new submission id.
+
+    Compared here rather than in the query: the code is far too long for a
+    URL, and a user has only a handful of rows per problem.
+    """
+    response = await _send(
+        "GET",
+        token,
+        params={
+            "problem_slug": f"eq.{problem_slug}",
+            "select": "summary,summary_model,code",
+            "order": "created_at.desc",
+        },
+    )
+    for row in response.json():
+        if row["code"] == code:
+            return row
+    return None
+
+
 async def insert_solution(token: str, row: dict) -> None:
     """Stores one solution as the caller. `user_id` is not sent: the table
     fills it in from the token. A submission that is already there is left

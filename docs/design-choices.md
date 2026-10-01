@@ -446,7 +446,11 @@ so a forged "accepted" only pollutes the forger's own history.
 
 **Cost controls.** The backend looks the submission up before calling the
 model, so re-opening an old accepted submission (which triggers detection
-again) costs nothing. `unique (user_id, submission_id)` makes the insert
+again) costs nothing. It also skips a submission whose code is identical to
+one already saved for the same problem: LeetCode gives every Submit a new id,
+so without this, resubmitting the same code would add a duplicate row and pay
+for a second summary. A different accepted approach to the same problem is
+still its own row. `unique (user_id, submission_id)` makes the insert
 idempotent. Summaries always run at effort `low` regardless of `LLM_EFFORT`,
 and the request has the same size caps as chat.
 

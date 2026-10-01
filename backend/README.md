@@ -46,8 +46,10 @@ decides what it can touch and the backend holds no service-role key. It needs
 `SUPABASE_ANON_KEY` in `.env` (the public key the extension also uses) and the
 table from `supabase/migrations/` (`npm run db:migrate` at the repo root).
 
-A submission that is already saved is returned as-is with no model call.
-Summaries always run at effort `low`, whatever `LLM_EFFORT` is.
+A submission that is already saved is returned as-is with no model call. So is
+one whose code is identical to a solution already saved for the same problem
+— resubmitting the same code gets a new id from LeetCode but is not stored
+twice. Summaries always run at effort `low`, whatever `LLM_EFFORT` is.
 
 ## Try it by hand
 

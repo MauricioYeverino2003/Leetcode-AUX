@@ -108,21 +108,28 @@ async def save_solution(
     user: User = Depends(current_user),
     token: str = Depends(user_token),
 ) -> SolutionResponse:
-    """Stores an accepted submission with a short summary of it — once.
+    """Stores an accepted submission with a short summary of it — once per
+    submission, and once per distinct piece of code for a problem.
 
     That the submission was accepted is the extension's word: the backend has
     no LeetCode session to check it with, and the row is the caller's own.
     """
-    # Looked up before the model call, so re-opening an old submission (which
-    # the extension reports again) costs nothing.
+    # Looked up before the model call, so neither of these costs anything:
+    # re-opening an old submission (which the extension reports again), and
+    # submitting the same code again, which LeetCode gives a new id each time.
+    # A different accepted approach to the same problem is still saved.
     try:
         existing = await db.find_solution(token, request.submission_id)
+        reason = "already saved"
+        if existing is None:
+            existing = await db.find_same_code(token, request.problem.slug, request.code)
+            reason = "same code as an earlier submission"
     except db.DbError as e:
         log.error("db: %s", e.log)
         raise HTTPException(e.status, e.detail) from None
 
     if existing:
-        log.info("solution user=%s submission=%d already saved", user.id, request.submission_id)
+        log.info("solution user=%s submission=%d %s", user.id, request.submission_id, reason)
         return SolutionResponse(
             summary=existing["summary"],
             already_saved=True,
