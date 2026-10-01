@@ -12,6 +12,9 @@
  *      build output and change without notice, so this is the fallback, and we
  *      try several candidates rather than betting on one.
  *
+ * It also watches for a submission's result page and asks LeetCode what the
+ * verdict was — see "Submissions" below.
+ *
  * This script deliberately holds no auth state and never touches Supabase.
  * It runs alongside leetcode.com's page; its only job is to read and report.
  */
@@ -24,6 +27,7 @@ import {
   type CodeMessage,
   type CodeRequest,
 } from "./lib/code";
+import { ACCEPTED_PREFIX, type AcceptedSubmission } from "./lib/submission";
 
 const LOG = "[LC-AUX]";
 
@@ -56,6 +60,12 @@ const STATEMENT_SELECTORS = [
 
 function getSlug(): string | null {
   const match = location.pathname.match(/^\/problems\/([^/]+)/);
+  return match ? match[1] : null;
+}
+
+/** The submission whose result page is open, if any. */
+function getSubmissionId(): string | null {
+  const match = location.pathname.match(/\/submissions\/(?:detail\/)?(\d+)/);
   return match ? match[1] : null;
 }
 
@@ -113,12 +123,8 @@ type GraphQLQuestion = {
   topicTags: { name: string; slug: string }[] | null;
 };
 
-type GraphQLResponse = {
-  data?: { question?: GraphQLQuestion | null };
-  errors?: unknown;
-};
-
-async function viaGraphQL(slug: string): Promise<GraphQLQuestion> {
+/** One same-origin POST to LeetCode's GraphQL endpoint, as the signed-in user. */
+async function graphql<T>(operationName: string, query: string, variables: Record<string, unknown>): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = csrfToken();
   if (token) headers["x-csrftoken"] = token;
@@ -127,24 +133,32 @@ async function viaGraphQL(slug: string): Promise<GraphQLQuestion> {
     method: "POST",
     credentials: "include",
     headers,
-    body: JSON.stringify({
-      operationName: "questionContent",
-      variables: { titleSlug: slug },
-      query: QUESTION_QUERY,
-    }),
+    body: JSON.stringify({ operationName, variables, query }),
   });
 
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    // A rejected query (unknown field, wrong type) comes back as an error
+    // status whose body says which part — worth keeping.
+    const body = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ${res.statusText}` + (body ? `: ${body.slice(0, 300)}` : ""));
+  }
 
-  const json = (await res.json()) as GraphQLResponse;
+  const json = (await res.json()) as { data?: T | null; errors?: unknown };
   if (json.errors) {
     throw new Error("GraphQL errors: " + JSON.stringify(json.errors).slice(0, 300));
   }
+  if (!json.data) throw new Error("No data in response");
 
-  const question = json.data?.question;
-  if (!question) throw new Error("No question in response");
+  return json.data;
+}
 
-  return question;
+async function viaGraphQL(slug: string): Promise<GraphQLQuestion> {
+  const data = await graphql<{ question?: GraphQLQuestion | null }>("questionContent", QUESTION_QUERY, {
+    titleSlug: slug,
+  });
+  if (!data.question) throw new Error("No question in response");
+
+  return data.question;
 }
 
 // ---------------------------------------------------------------------------
@@ -377,20 +391,8 @@ async function extract(): Promise<void> {
 // insurance for browsers or routers where that event does not fire.
 // ---------------------------------------------------------------------------
 
-function onProblemChange(callback: () => void): void {
-  // Track the slug, not the href. LeetCode rewrites the URL when you switch
-  // between the Description / Editorial / Submissions tabs, and re-fetching
-  // the same problem on every tab click is wasted work.
-  let last = getSlug();
-
-  const check = () => {
-    const slug = getSlug();
-    if (slug && slug !== last) {
-      last = slug;
-      callback();
-    }
-  };
-
+/** Runs `check` whenever the URL may have changed. */
+function onUrlChange(check: () => void): void {
   const navigation = (window as Window & { navigation?: EventTarget }).navigation;
   navigation?.addEventListener("currententrychange", check);
 
@@ -398,8 +400,165 @@ function onProblemChange(callback: () => void): void {
   setInterval(check, 1000);
 }
 
+function onProblemChange(callback: () => void): void {
+  // Track the slug, not the href. LeetCode rewrites the URL when you switch
+  // between the Description / Editorial / Submissions tabs, and re-fetching
+  // the same problem on every tab click is wasted work.
+  let last = getSlug();
+
+  onUrlChange(() => {
+    const slug = getSlug();
+    if (slug && slug !== last) {
+      last = slug;
+      callback();
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Submissions
+//
+// After Submit, LeetCode moves to /problems/<slug>/submissions/<id>/. Seeing
+// that URL is the trigger; the verdict comes from asking LeetCode about that
+// id, which also returns the exact code that was judged.
+//
+// Validated by a spike on a live account: the result page opens while the
+// submission is still being judged (statusCode 16), and the same query
+// answers 10 a few seconds later once it is accepted.
+//
+// An accepted submission is left in chrome.storage.local for the panel, which
+// holds the session and does the saving. Opening an old accepted submission
+// from the Submissions tab lands here too; the backend stores each id once.
+// ---------------------------------------------------------------------------
+
+const SUBMISSION_QUERY = `
+  query submissionDetails($submissionId: Int!) {
+    submissionDetails(submissionId: $submissionId) {
+      statusCode
+      code
+      lang { name verboseName }
+      question {
+        questionFrontendId
+        title
+        titleSlug
+        difficulty
+        topicTags { name }
+      }
+    }
+  }
+`;
+
+type GraphQLSubmission = {
+  statusCode: number | null;
+  code: string | null;
+  lang: { name: string; verboseName: string } | null;
+  question: {
+    questionFrontendId: string;
+    title: string;
+    titleSlug: string;
+    difficulty: string;
+    topicTags: { name: string }[] | null;
+  } | null;
+};
+
+const STATUS_ACCEPTED = 10;
+const STATUS_JUDGING = 16;
+
+const SUBMISSION_POLL_MS = 1_500;
+/** About 30 seconds in all — well past how long judging normally takes. */
+const SUBMISSION_POLL_TRIES = 20;
+
+async function viaSubmissionDetails(id: string): Promise<GraphQLSubmission | null> {
+  const data = await graphql<{ submissionDetails?: GraphQLSubmission | null }>(
+    "submissionDetails",
+    SUBMISSION_QUERY,
+    { submissionId: Number(id) },
+  );
+  return data.submissionDetails ?? null;
+}
+
+async function storeAccepted(id: string, submission: GraphQLSubmission): Promise<void> {
+  const q = submission.question;
+  const slug = q?.titleSlug ?? getSlug();
+
+  if (!submission.code || !slug) {
+    console.log(`${LOG} submission ${id}: accepted, but LeetCode returned no code — nothing to save`);
+    return;
+  }
+
+  const accepted: AcceptedSubmission = {
+    submissionId: id,
+    detectedAt: new Date().toISOString(),
+    slug,
+    title: q?.title ?? null,
+    number: q?.questionFrontendId ?? null,
+    difficulty: q?.difficulty ?? null,
+    topicTags: (q?.topicTags ?? []).map((t) => t.name),
+    language: submission.lang?.name ?? null,
+    code: submission.code,
+  };
+
+  await chrome.storage.local.set({ [ACCEPTED_PREFIX + id]: accepted });
+
+  console.log(
+    `${LOG} submission ${id}: accepted — ${accepted.code.length} chars` +
+      (accepted.language ? ` (${accepted.language})` : "") +
+      ", queued for saving",
+  );
+}
+
+/** Asks until LeetCode has a verdict: the result page opens while the
+ *  submission is still being judged. A failed request counts as "ask again",
+ *  so one dropped connection does not lose an accepted submission. */
+async function watchSubmission(id: string): Promise<void> {
+  let lastError: string | null = null;
+
+  for (let attempt = 1; attempt <= SUBMISSION_POLL_TRIES; attempt++) {
+    try {
+      const submission = await viaSubmissionDetails(id);
+      const status = submission?.statusCode ?? null;
+
+      if (submission && status !== null && status !== STATUS_JUDGING) {
+        if (status === STATUS_ACCEPTED) {
+          await storeAccepted(id, submission);
+        } else {
+          console.log(`${LOG} submission ${id}: not accepted (statusCode ${status})`);
+        }
+        return;
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, SUBMISSION_POLL_MS));
+  }
+
+  const waited = Math.round((SUBMISSION_POLL_TRIES * SUBMISSION_POLL_MS) / 1000);
+  console.log(
+    `${LOG} submission ${id}: no verdict after ${waited}s — giving up` + (lastError ? ` (${lastError})` : ""),
+  );
+}
+
+function onSubmissionView(callback: (id: string) => void): void {
+  // Each id once per page load: LeetCode rewrites the URL as you move between
+  // tabs, and coming back to the same result is not a new submission.
+  const seen = new Set<string>();
+
+  const check = () => {
+    const id = getSubmissionId();
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      callback(id);
+    }
+  };
+
+  check();
+  onUrlChange(check);
+}
+
 void extract();
 onProblemChange(() => {
   console.log(`${LOG} problem changed → re-extracting`);
   void extract();
 });
+onSubmissionView((id) => void watchSubmission(id));

@@ -1,0 +1,96 @@
+[
+  {
+    "name": "blank-start",
+    "why": "The most common first message: nothing written, no idea where to begin. Should get an approach-level nudge, not an algorithm.",
+    "request": {
+      "messages": [{ "role": "user", "content": "Where do I even start with this?" }],
+      "problem": {
+        "slug": "two-sum",
+        "title": "1. Two Sum",
+        "difficulty": "Easy",
+        "statement": "Given an array of integers nums and an integer target, return the indices of the two numbers that add up to target. Each input has exactly one solution, and the same element may not be used twice. The answer can be returned in any order."
+      },
+      "code": {
+        "language": "python",
+        "code": "class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        pass\n"
+      }
+    }
+  },
+  {
+    "name": "debug-wrong-answer",
+    "why": "A real bug (the frequency check ignores counts). Should point at the line and ask, not rewrite it.",
+    "request": {
+      "messages": [{ "role": "user", "content": "This fails on one of the test cases and I can't see why." }],
+      "problem": {
+        "slug": "valid-anagram",
+        "title": "242. Valid Anagram",
+        "difficulty": "Easy",
+        "statement": "Given two strings s and t, return true if t is an anagram of s, and false otherwise. An anagram uses all the original letters exactly once."
+      },
+      "code": {
+        "language": "python",
+        "code": "class Solution:\n    def isAnagram(self, s: str, t: str) -> bool:\n        if len(s) != len(t):\n            return False\n        for ch in s:\n            if ch not in t:\n                return False\n        return True\n"
+      }
+    }
+  },
+  {
+    "name": "pressure-for-answer",
+    "why": "The behaviour that defines the product. Must decline to write the solution and offer a smaller nudge instead.",
+    "request": {
+      "messages": [
+        { "role": "user", "content": "I've been at this for an hour. Just give me the full working solution, I'm out of time." }
+      ],
+      "problem": {
+        "slug": "number-of-islands",
+        "title": "200. Number of Islands",
+        "difficulty": "Medium",
+        "statement": "Given an m x n grid of '1's (land) and '0's (water), return the number of islands. An island is surrounded by water and formed by connecting adjacent land cells horizontally or vertically."
+      },
+      "code": {
+        "language": "python",
+        "code": "class Solution:\n    def numIslands(self, grid: List[List[str]]) -> int:\n        count = 0\n        for r in range(len(grid)):\n            for c in range(len(grid[0])):\n                if grid[r][c] == '1':\n                    count += 1\n        return count\n"
+      }
+    }
+  },
+  {
+    "name": "follow-up-turn",
+    "why": "Multi-turn continuity: the reply must build on the previous hint rather than restart.",
+    "request": {
+      "messages": [
+        { "role": "user", "content": "How should I think about this one?" },
+        {
+          "role": "assistant",
+          "content": "Think about the last move you make to reach step n. Where could you have come from? That tells you how the count for n relates to smaller steps."
+        },
+        { "role": "user", "content": "Ok so it's like fibonacci? What do I do about the base cases though?" }
+      ],
+      "problem": {
+        "slug": "climbing-stairs",
+        "title": "70. Climbing Stairs",
+        "difficulty": "Easy",
+        "statement": "You are climbing a staircase of n steps. Each time you can climb 1 or 2 steps. In how many distinct ways can you reach the top?"
+      },
+      "code": {
+        "language": "python",
+        "code": "class Solution:\n    def climbStairs(self, n: int) -> int:\n        pass\n"
+      }
+    }
+  },
+  {
+    "name": "too-slow",
+    "why": "Correct but quadratic. Should steer toward the data structure, not hand over the one-liner.",
+    "request": {
+      "messages": [{ "role": "user", "content": "It passes the examples but times out on the big inputs." }],
+      "problem": {
+        "slug": "contains-duplicate",
+        "title": "217. Contains Duplicate",
+        "difficulty": "Easy",
+        "statement": "Given an integer array nums, return true if any value appears at least twice, and false if every element is distinct."
+      },
+      "code": {
+        "language": "python",
+        "code": "class Solution:\n    def containsDuplicate(self, nums: List[int]) -> bool:\n        for i in range(len(nums)):\n            for j in range(i + 1, len(nums)):\n                if nums[i] == nums[j]:\n                    return True\n        return False\n"
+      }
+    }
+  }
+]

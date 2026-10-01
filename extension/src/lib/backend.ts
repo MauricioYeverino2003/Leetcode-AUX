@@ -26,12 +26,27 @@ export type ChatResponse = {
   reply: string;
   model: string;
   usage: {
+    /** Uncached input, billed at the full rate. */
     input_tokens: number;
     output_tokens: number;
+    /** Part of output_tokens spent thinking. 0 for providers that don't report it. */
+    reasoning_tokens: number;
     cache_read_input_tokens: number;
     cache_creation_input_tokens: number;
   };
+  timing: {
+    /** The model call alone. */
+    model_ms: number;
+    /** The whole backend route, including auth. */
+    backend_ms: number;
+  };
+  /** Estimated; null when the backend has no price for the model. */
+  cost_usd: number | null;
 };
+
+/** What the panel gets back: the response plus its own measurement of the
+ *  full wait, from clicking send to having the reply. */
+export type ChatResult = ChatResponse & { round_trip_ms: number };
 
 export class BackendError extends Error {
   constructor(
@@ -43,7 +58,27 @@ export class BackendError extends Error {
   }
 }
 
-export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
+/** An accepted submission, for the backend to summarise and store. */
+export type SolutionRequest = {
+  submission_id: number;
+  problem: NonNullable<ChatRequest["problem"]>;
+  problem_number: string | null;
+  topic_tags: string[];
+  language: string | null;
+  code: string;
+};
+
+export type SolutionResponse = {
+  summary: string;
+  /** True when the backend already had this submission: nothing was written
+   *  and no model call was made. */
+  already_saved: boolean;
+  model: string | null;
+  cost_usd: number | null;
+};
+
+/** One authenticated POST to the backend. */
+async function post<T>(path: string, body: unknown): Promise<T> {
   if (!BACKEND_URL) {
     throw new Error("VITE_BACKEND_URL is not set — add it to extension/.env.local and rebuild.");
   }
@@ -61,13 +96,13 @@ export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
 
   let response: Response;
   try {
-    response = await fetch(`${BACKEND_URL}/chat`, {
+    response = await fetch(`${BACKEND_URL}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(body),
     });
   } catch {
     throw new BackendError(0, `Can't reach the backend at ${BACKEND_URL}. Is it running?`);
@@ -89,5 +124,17 @@ export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
     throw new BackendError(response.status, detail);
   }
 
-  return (await response.json()) as ChatResponse;
+  return (await response.json()) as T;
+}
+
+export async function sendChat(request: ChatRequest): Promise<ChatResult> {
+  // Measured around the whole call so the token refresh inside post() counts
+  // too — it is part of what the user waits for.
+  const started = performance.now();
+  const body = await post<ChatResponse>("/chat", request);
+  return { ...body, round_trip_ms: Math.round(performance.now() - started) };
+}
+
+export function saveSolution(request: SolutionRequest): Promise<SolutionResponse> {
+  return post<SolutionResponse>("/solutions", request);
 }

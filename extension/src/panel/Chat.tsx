@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
-import { sendChat, type ChatRequest, type ChatTurn } from "../lib/backend";
+import { sendChat, type ChatRequest, type ChatResult, type ChatTurn } from "../lib/backend";
 import type { Capture } from "../lib/capture";
 import type { CodeCapture } from "../lib/code";
 import { Notice } from "./Notice";
+
+/** What one reply cost, shown under it. Kept on the turn, never sent back. */
+type TurnMeta = {
+  model: string;
+  modelMs: number;
+  roundTripMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cachedTokens: number;
+  costUsd: number | null;
+};
+
+type Turn = ChatTurn & { meta?: TurnMeta };
 
 /**
  * The conversation. Held in component state only — nothing is persisted yet,
@@ -11,7 +25,7 @@ import { Notice } from "./Notice";
  * since a transcript about Two Sum is noise for Number of Islands.
  */
 export function Chat({ capture, code }: { capture: Capture | null; code: CodeCapture | null }) {
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,19 +46,20 @@ export function Chat({ capture, code }: { capture: Capture | null; code: CodeCap
     const text = draft.trim();
     if (!text || pending) return;
 
-    const next: ChatTurn[] = [...turns, { role: "user", content: text }];
+    const next: Turn[] = [...turns, { role: "user", content: text }];
     setTurns(next);
     setDraft("");
     setPending(true);
     setError(null);
 
     try {
-      const response = await sendChat({
-        messages: next,
+      const result = await sendChat({
+        // Only role and content go over the wire; the metrics stay local.
+        messages: next.map(({ role, content }) => ({ role, content })),
         problem: problemContext(capture),
         code: codeContext(code, slug),
       });
-      setTurns([...next, { role: "assistant", content: response.reply }]);
+      setTurns([...next, { role: "assistant", content: result.reply, meta: metaFrom(result) }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       // Put the message back where it was so a retry is one keypress away.
@@ -80,8 +95,9 @@ export function Chat({ capture, code }: { capture: Capture | null; code: CodeCap
         ) : null}
 
         {turns.map((turn, i) => (
-          <div key={i} className={`turn turn-${turn.role}`}>
-            {turn.content}
+          <div key={i} className={`turn-group turn-group-${turn.role}`}>
+            <div className={`turn turn-${turn.role}`}>{turn.content}</div>
+            {turn.meta ? <div className="turn-meta">{formatMeta(turn.meta)}</div> : null}
           </div>
         ))}
 
@@ -112,6 +128,35 @@ export function Chat({ capture, code }: { capture: Capture | null; code: CodeCap
       </form>
     </section>
   );
+}
+
+function metaFrom(result: ChatResult): TurnMeta {
+  return {
+    model: result.model,
+    modelMs: result.timing.model_ms,
+    roundTripMs: result.round_trip_ms,
+    inputTokens: result.usage.input_tokens,
+    outputTokens: result.usage.output_tokens,
+    reasoningTokens: result.usage.reasoning_tokens,
+    cachedTokens: result.usage.cache_read_input_tokens,
+    costUsd: result.cost_usd,
+  };
+}
+
+/** e.g. "gpt-5 · 2.1s model / 2.4s total · 3.2k in / 640 out (410 reasoning) · 2.9k cached · ~$0.021" */
+function formatMeta(m: TurnMeta): string {
+  const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+  const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+  const parts = [
+    m.model,
+    `${secs(m.modelMs)} model / ${secs(m.roundTripMs)} total`,
+    `${k(m.inputTokens)} in / ${k(m.outputTokens)} out` +
+      (m.reasoningTokens > 0 ? ` (${k(m.reasoningTokens)} reasoning)` : ""),
+  ];
+  if (m.cachedTokens > 0) parts.push(`${k(m.cachedTokens)} cached`);
+  if (m.costUsd !== null) parts.push(`~$${m.costUsd < 0.01 ? m.costUsd.toFixed(4) : m.costUsd.toFixed(3)}`);
+  return parts.join(" · ");
 }
 
 function problemContext(capture: Capture | null): ChatRequest["problem"] {

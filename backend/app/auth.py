@@ -94,3 +94,17 @@ def current_user(
         raise _unauthorized("Invalid token") from None
 
     return User(id=claims["sub"], email=claims.get("email"))
+
+
+def user_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    _: User = Depends(current_user),
+) -> str:
+    """The caller's raw access token, for acting as them against Supabase.
+
+    Depends on current_user so it is only ever handed out once verified. Kept
+    out of User because /me echoes that model back.
+    """
+    if credentials is None:
+        raise _unauthorized("Missing bearer token")
+    return credentials.credentials

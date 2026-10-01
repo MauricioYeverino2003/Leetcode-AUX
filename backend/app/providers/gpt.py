@@ -50,15 +50,37 @@ class OpenAIProvider:
         return self._client
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
+        instructions = f"{SYSTEM_PROMPT}\n\n{problem_block(request)}"
+        input_items = _build_input(request)
+
+        response = await self._create(instructions=instructions, input=input_items, effort=settings.llm_effort)
+        return _to_chat_response(response, {"instructions": instructions, "input": input_items})
+
+    async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
+        response = await self._create(instructions=instructions, input=text, effort=effort)
+        return _to_chat_response(response, {"instructions": instructions, "input": text})
+
+    async def _create(self, *, instructions: str, input: str | list[dict], effort: str | None) -> Response:
+        """The one place this provider calls the API, so every kind of request
+        gets the same error mapping."""
         try:
-            response = await self._get_client().responses.create(
+            return await self._get_client().responses.create(
                 model=self.model,
-                instructions=f"{SYSTEM_PROMPT}\n\n{problem_block(request)}",
-                input=_build_input(request),
+                instructions=instructions,
+                input=input,
                 max_output_tokens=16000,
+                # Reasoning tokens are billed as output and are most of the
+                # latency; effort caps them. Omitted = the API's default.
+                **({"reasoning": {"effort": effort}} if effort else {}),
             )
-        except openai.AuthenticationError:
-            raise ProviderError(502, "The backend's OpenAI key was rejected") from None
+        except openai.AuthenticationError as e:
+            # OpenAI's message names the key it saw (masked), which is what
+            # you need when the wrong key is being picked up.
+            raise ProviderError(
+                502,
+                "The backend's OpenAI key was rejected",
+                log=f"OpenAI rejected the key: {e.message}",
+            ) from None
         except openai.RateLimitError:
             # Also what the free daily allowance returns once it is used up.
             raise ProviderError(429, "Rate limited by OpenAI — try again shortly") from None
@@ -71,19 +93,26 @@ class OpenAIProvider:
         except openai.APIConnectionError:
             raise ProviderError(502, "Could not reach OpenAI") from None
 
-        usage = response.usage
-        cached = usage.input_tokens_details.cached_tokens if usage else 0
-        return ChatResponse(
-            reply=_reply_text(response),
-            model=response.model,
-            usage=Usage(
-                input_tokens=usage.input_tokens if usage else 0,
-                output_tokens=usage.output_tokens if usage else 0,
-                cache_read_input_tokens=cached,
-                # OpenAI does not bill cache writes separately.
-                cache_creation_input_tokens=0,
-            ),
-        )
+
+def _to_chat_response(response: Response, prompt: dict) -> ChatResponse:
+    usage = response.usage
+    cached = usage.input_tokens_details.cached_tokens if usage else 0
+    reasoning = usage.output_tokens_details.reasoning_tokens if usage else 0
+    return ChatResponse(
+        reply=_reply_text(response),
+        model=response.model,
+        usage=Usage(
+            # OpenAI's input_tokens includes the cached part; Usage wants
+            # the uncached part only, so subtract it out.
+            input_tokens=(usage.input_tokens - cached) if usage else 0,
+            output_tokens=usage.output_tokens if usage else 0,
+            reasoning_tokens=reasoning,
+            cache_read_input_tokens=cached,
+            # OpenAI does not bill cache writes separately.
+            cache_creation_input_tokens=0,
+        ),
+        prompt=prompt,
+    )
 
 
 def _build_input(request: ChatRequest) -> list[dict]:

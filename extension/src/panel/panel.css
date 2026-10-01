@@ -290,6 +290,14 @@ ul {
   color: var(--hard);
 }
 
+/* The saved-solution status and its summary, as one unit in the strip. */
+.solution {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
 /* ---- chat -------------------------------------------------------------- */
 
 .chat {
@@ -320,6 +328,28 @@ ul {
   word-break: break-word;
 }
 
+/* A turn plus its metrics line, aligned to the same side as the bubble. */
+.turn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 92%;
+}
+
+.turn-group-user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.turn-group-assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.turn-group .turn {
+  max-width: 100%;
+}
+
 .turn-user {
   align-self: flex-end;
   background: var(--fg);
@@ -329,6 +359,13 @@ ul {
 .turn-assistant {
   align-self: flex-start;
   border: 1px solid var(--line);
+}
+
+.turn-meta {
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 .composer {

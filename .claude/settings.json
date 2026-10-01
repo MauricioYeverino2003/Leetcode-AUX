@@ -10,7 +10,9 @@
       "Edit(**/.env.local)",
       "Edit(**/.env.development)",
       "Edit(**/.env.production)",
-      "Edit(**/.env.*.local)"
+      "Edit(**/.env.*.local)",
+      "PowerShell(*.env*)",
+      "Bash(*.env*)"
     ]
   }
 }

@@ -10,6 +10,7 @@ dependencies = [
     "pyjwt[crypto]>=2.9",
     "pydantic-settings>=2.5",
     "openai>=3.19.2",
+    "httpx>=0.28.1",
 ]
 
 [tool.uv]

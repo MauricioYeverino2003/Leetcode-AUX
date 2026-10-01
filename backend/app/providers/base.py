@@ -40,6 +40,12 @@ class Provider(Protocol):
 
     async def chat(self, request: ChatRequest) -> ChatResponse: ...
 
+    async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
+        """A one-off request outside the tutoring chat — its own instructions,
+        one piece of input, no transcript. `effort` is this call's own; the
+        LLM_EFFORT setting is for chat and is not applied here."""
+        ...
+
 
 # What the user sees when the vendor's safety layer declines the request.
 # Worded the same everywhere so the product does not change tone by vendor.

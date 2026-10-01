@@ -3,9 +3,11 @@ import type { Session } from "@supabase/supabase-js";
 
 import { CAPTURE_KEY, type Capture } from "../lib/capture";
 import { CODE_KEY, type CodeCapture } from "../lib/code";
+import { SOLUTION_KEY, type SavedSolution } from "../lib/submission";
 import { supabase } from "../lib/supabase";
 import { Chat } from "./Chat";
 import { Notice } from "./Notice";
+import { type SaveState, useSolutionSaver } from "./useSolutionSaver";
 
 /** A value in chrome.storage.local, kept live: the content script writes
  *  whenever something changes on the page, and onChanged delivers it here. */
@@ -39,6 +41,8 @@ function useStored<T>(key: string): T | null {
 export function SignedIn({ session }: { session: Session }) {
   const capture = useStored<Capture>(CAPTURE_KEY);
   const code = useStored<CodeCapture>(CODE_KEY);
+  const solution = useStored<SavedSolution>(SOLUTION_KEY);
+  const saver = useSolutionSaver(capture);
   const [signingOut, setSigningOut] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
@@ -86,6 +90,7 @@ export function SignedIn({ session }: { session: Session }) {
           <p className="muted small">Open a LeetCode problem to get started.</p>
         )}
         <CodeLine code={code} problemSlug={capture?.slug ?? null} />
+        <SolutionLine saver={saver} solution={solution} problemSlug={capture?.slug ?? null} />
       </section>
 
       {showPrivacy ? (
@@ -129,5 +134,36 @@ function CodeLine({ code, problemSlug }: { code: CodeCapture | null; problemSlug
     <p className="muted small">
       {code.language ?? "code"} · {lines} {lines === 1 ? "line" : "lines"} · sent with each message
     </p>
+  );
+}
+
+/** Whether an accepted solution is being saved, and — for the problem that is
+ *  open — the summary stored with the last one. */
+function SolutionLine({
+  saver,
+  solution,
+  problemSlug,
+}: {
+  saver: SaveState;
+  solution: SavedSolution | null;
+  problemSlug: string | null;
+}) {
+  if (saver.status === "saving") {
+    return <p className="muted small">Accepted — saving your solution…</p>;
+  }
+
+  if (saver.status === "error") {
+    return <p className="notice notice-warn small">Couldn't save your accepted solution: {saver.message}</p>;
+  }
+
+  if (!solution || solution.slug !== problemSlug) return null;
+
+  return (
+    <div className="solution">
+      <p className="notice notice-info small">
+        {solution.alreadySaved ? "Accepted solution already saved" : "Accepted solution saved"}
+      </p>
+      <p className="muted small">{solution.summary}</p>
+    </div>
   );
 }

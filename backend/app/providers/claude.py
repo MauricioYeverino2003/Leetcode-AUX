@@ -53,31 +53,50 @@ class ClaudeProvider:
         return c
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
+        system = [
+            {"type": "text", "text": SYSTEM_PROMPT},
+            {
+                "type": "text",
+                "text": problem_block(request),
+                "cache_control": {"type": "ephemeral"},
+            },
+        ]
+        messages = _build_messages(request)
+
+        response = await self._create(system=system, messages=messages, effort=settings.llm_effort)
+        return _to_chat_response(response, {"system": system, "messages": messages})
+
+    async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
+        system = [{"type": "text", "text": instructions}]
+        messages = [{"role": "user", "content": text}]
+
+        response = await self._create(system=system, messages=messages, effort=effort)
+        return _to_chat_response(response, {"system": system, "messages": messages})
+
+    async def _create(self, *, system: list[dict], messages: list[dict], effort: str | None) -> BetaMessage:
+        """The one place this provider calls the API, so every kind of request
+        gets the same error mapping."""
         try:
-            response = await self._get_client().beta.messages.create(
+            return await self._get_client().beta.messages.create(
                 model=self.model,
                 max_tokens=16000,
-                # Claude Opus 5 has thinking on by default (adaptive). Not
-                # configured here on purpose; `output_config={"effort": ...}`
-                # is the knob to tune once there is real usage to measure.
-                #
+                # Claude Opus 5 has thinking on by default (adaptive). effort,
+                # when set, caps how much; omitted = the default.
+                **({"output_config": {"effort": effort}} if effort else {}),
                 # Refusal fallback: if a safety classifier declines the
                 # request, the API re-runs it on Anthropic's recommended
                 # fallback model server-side instead of returning the refusal.
                 betas=["server-side-fallback-2026-07-01"],
                 fallbacks="default",
-                system=[
-                    {"type": "text", "text": SYSTEM_PROMPT},
-                    {
-                        "type": "text",
-                        "text": problem_block(request),
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                ],
-                messages=_build_messages(request),
+                system=system,
+                messages=messages,
             )
-        except anthropic.AuthenticationError:
-            raise ProviderError(502, "The backend's Anthropic key was rejected") from None
+        except anthropic.AuthenticationError as e:
+            raise ProviderError(
+                502,
+                "The backend's Anthropic key was rejected",
+                log=f"Anthropic rejected the key: {e.message}",
+            ) from None
         except anthropic.RateLimitError:
             raise ProviderError(429, "Rate limited by Anthropic — try again shortly") from None
         except anthropic.APIStatusError as e:
@@ -89,17 +108,24 @@ class ClaudeProvider:
         except anthropic.APIConnectionError:
             raise ProviderError(502, "Could not reach Anthropic") from None
 
-        usage = response.usage
-        return ChatResponse(
-            reply=_reply_text(response),
-            model=response.model,
-            usage=Usage(
-                input_tokens=usage.input_tokens,
-                output_tokens=usage.output_tokens,
-                cache_read_input_tokens=usage.cache_read_input_tokens or 0,
-                cache_creation_input_tokens=usage.cache_creation_input_tokens or 0,
-            ),
-        )
+
+def _to_chat_response(response: BetaMessage, prompt: dict) -> ChatResponse:
+    usage = response.usage
+    return ChatResponse(
+        reply=_reply_text(response),
+        model=response.model,
+        usage=Usage(
+            # Anthropic already reports input_tokens excluding the cached
+            # part, which is exactly what Usage wants.
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            # Thinking is folded into output_tokens; not reported separately.
+            reasoning_tokens=0,
+            cache_read_input_tokens=usage.cache_read_input_tokens or 0,
+            cache_creation_input_tokens=usage.cache_creation_input_tokens or 0,
+        ),
+        prompt=prompt,
+    )
 
 
 def _build_messages(request: ChatRequest) -> list[dict]:
