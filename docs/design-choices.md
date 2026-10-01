@@ -457,9 +457,11 @@ only happens with the panel open, which is where the notice is shown.
 
 **Cost.** Another dependence on an undocumented LeetCode endpoint; one model
 call per accepted submission; and stored user code, which is more to be
-responsible for than a transcript that vanishes with the panel. The backend
-also now carries `httpx` for the REST calls alongside the `httpx2` the model
-SDKs bring.
+responsible for than a transcript that vanishes with the panel.
+
+**HTTP client.** The REST calls use `httpx2`, the Pydantic-maintained
+continuation of `httpx`. Both model SDKs already depend on it, so it adds no
+new library; it is declared explicitly because `app/db.py` imports it.
 
 **Status.** Built 2026-10-01. Verified without spending: the backend imports,
 `/solutions` answers 401 without a valid token, the request schema rejects

@@ -7,13 +7,13 @@ credential to leak or misuse. The anon key in the `apikey` header is the
 public project key the extension also ships; it says which project, not who.
 """
 
-import httpx
+import httpx2
 
 from .config import settings
 
 TABLE = "solutions"
 
-_client: httpx.AsyncClient | None = None
+_client: httpx2.AsyncClient | None = None
 
 
 class DbError(Exception):
@@ -27,17 +27,17 @@ class DbError(Exception):
         self.log = log or detail
 
 
-def _get_client() -> httpx.AsyncClient:
+def _get_client() -> httpx2.AsyncClient:
     global _client
     if _client is None:
-        _client = httpx.AsyncClient(
+        _client = httpx2.AsyncClient(
             base_url=settings.supabase_url.rstrip("/") + "/rest/v1",
             timeout=10.0,
         )
     return _client
 
 
-async def _send(method: str, token: str, *, prefer: str | None = None, **kwargs) -> httpx.Response:
+async def _send(method: str, token: str, *, prefer: str | None = None, **kwargs) -> httpx2.Response:
     if not settings.supabase_anon_key:
         raise DbError(503, "Saving is not configured: set SUPABASE_ANON_KEY in backend/.env")
 
@@ -47,7 +47,7 @@ async def _send(method: str, token: str, *, prefer: str | None = None, **kwargs)
 
     try:
         response = await _get_client().request(method, f"/{TABLE}", headers=headers, **kwargs)
-    except httpx.HTTPError as e:
+    except httpx2.HTTPError as e:
         raise DbError(502, "Could not reach the database", log=f"Supabase request failed: {e!r}") from None
 
     if response.is_error:
