@@ -15,6 +15,8 @@ type TurnMeta = {
   reasoningTokens: number;
   cachedTokens: number;
   costUsd: number | null;
+  /** Titles of the saved solutions the tutor was shown. */
+  recalled: string[];
 };
 
 type Turn = ChatTurn & { meta?: TurnMeta };
@@ -140,10 +142,11 @@ function metaFrom(result: ChatResult): TurnMeta {
     reasoningTokens: result.usage.reasoning_tokens,
     cachedTokens: result.usage.cache_read_input_tokens,
     costUsd: result.cost_usd,
+    recalled: result.prior_solutions.map((s) => s.title ?? s.slug),
   };
 }
 
-/** e.g. "gpt-5 · 2.1s model / 2.4s total · 3.2k in / 640 out (410 reasoning) · 2.9k cached · ~$0.021" */
+/** e.g. "gpt-5 · 2.1s model / 2.4s total · 3.2k in / 640 out (410 reasoning) · 2.9k cached · ~$0.021 · recalled: 1. Two Sum" */
 function formatMeta(m: TurnMeta): string {
   const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
   const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
@@ -156,6 +159,7 @@ function formatMeta(m: TurnMeta): string {
   ];
   if (m.cachedTokens > 0) parts.push(`${k(m.cachedTokens)} cached`);
   if (m.costUsd !== null) parts.push(`~$${m.costUsd < 0.01 ? m.costUsd.toFixed(4) : m.costUsd.toFixed(3)}`);
+  if (m.recalled.length > 0) parts.push(`recalled: ${m.recalled.join(", ")}`);
   return parts.join(" · ");
 }
 
@@ -169,6 +173,7 @@ function problemContext(capture: Capture | null): ChatRequest["problem"] {
       title: `${g.number}. ${g.title}`,
       difficulty: g.difficulty,
       statement: g.statement,
+      topic_tags: g.topicTags,
     };
   }
 
@@ -177,6 +182,8 @@ function problemContext(capture: Capture | null): ChatRequest["problem"] {
     title: capture.dom.title,
     difficulty: null,
     statement: capture.dom.statement,
+    // The DOM path has no tags, so nothing is recalled on it.
+    topic_tags: [],
   };
 }
 

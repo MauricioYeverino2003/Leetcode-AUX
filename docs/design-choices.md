@@ -2,7 +2,7 @@
 
 A running log of architectural decisions and the reasoning behind them.
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-03_
 
 ## How to read this
 
@@ -473,6 +473,65 @@ empty code, and the extension builds. The end-to-end run — table migrated,
 accepted submission saved, repeat submission not re-summarised, wrong answer
 ignored — is still to do.
 
+**Update 2026-10-03.** Verified end to end: Two Sum and Add Two Numbers saved
+with summaries; resubmitting Two Sum unchanged was recognised as the same code
+and not stored again; a wrong answer (`statusCode` 11) saved nothing.
+
+---
+
+## Recall: tag overlap, summaries only
+
+On every chat message, the backend looks up the user's saved solutions whose
+LeetCode topic tags overlap the current problem's, and puts up to three of
+their summaries into the prompt. The tutor can then say "you solved Two Sum
+with a hash map — the same idea applies here", or "you have solved this one
+before." This is the first time saved solutions feed back into hints.
+
+**Context.** Solutions were being saved (previous entry) and never read. The
+feature the product is named for — remembering what you have solved — needed
+retrieval of some kind, and the obvious one, embeddings, is far more
+machinery than two rows justify.
+
+**Similarity is topic-tag overlap, for now.** LeetCode's tags are already
+stored with every saved solution, so this needs no new data. Rows are ranked:
+the same problem first, then the number of shared tags, then recency; one row
+per problem; at most three. Tags that nearly every problem carries — `Array`,
+`String` — are ignored, because overlap on them alone says nothing. If the
+current problem has no other tags, recall falls back to looking for the same
+problem, so "you have solved this before" still works.
+
+This puts tags ahead of the NeetCode pattern map that *NeetCode's pattern map
+for "similar problems"* chose. The reasoning there — one curated pattern beats
+five overlapping tags for coaching — still holds; what changed is the order of
+work. Tags are free today; the pattern map needs a 188KB file in the backend
+and covers about 450 problems. The upgrade path, in order: the pattern map
+when tag matching proves too coarse, `pgvector` when the pattern map does.
+
+**Summaries only, never code.** The tutor sees each recalled problem's name,
+tags, difficulty and saved summary. Showing it the user's old code would
+invite it to quote that code back, which the no-code rule exists to prevent,
+and would cost a few hundred tokens per recalled solution on every message.
+The summary was written for exactly this use.
+
+**Where it sits in the prompt.** Inside the problem block — after the
+statement, before the transcript. That keeps it under the Anthropic cache
+breakpoint and inside OpenAI's stable prefix: it changes only when a new
+solution is saved, not per message.
+
+**Recall never breaks chat.** A database failure (stack down, anon key
+missing) is logged as a warning and the tutor answers without it. The panel
+shows `recalled: …` under each reply, so whether recall worked is visible
+without reading logs.
+
+**Cost.** One database read per message (negligible), and up to three short
+summaries of prompt tokens. Tag overlap is coarse: `Hash Table` links Two Sum
+to many problems that share little else. That is the known limitation the
+upgrade path exists for.
+
+**Status.** Built 2026-10-03; verified offline (ranking, prompt block, the
+route with a fake database, graceful failure). Live check: open a Hash Table
+problem with Two Sum saved and see `recalled: 1. Two Sum`.
+
 ---
 
 ## First working chat: `POST /chat`, verified by JWKS, deliberately unstreamed
@@ -669,6 +728,11 @@ advantage — bundled tests — no longer applies.
 **Cost.** Pinned to a community-maintained file. Pattern coverage stops at 450
 problems, so anything outside that set has no pattern label.
 
+**Update 2026-10-03.** Not yet used. The first version of "similar problems"
+matches on LeetCode topic tags instead, because they are already stored with
+every saved solution — see *Recall: tag overlap, summaries only*. The pattern
+map is the next step up when tags prove too coarse.
+
 ---
 
 ## Never let an LLM assert an expected output
@@ -772,7 +836,7 @@ Decisions not yet made, and things deliberately postponed.
 | Local host permissions | `http://127.0.0.1:54321/*` and `http://127.0.0.1:8000/*` are needed for dev and **must be replaced with the hosted URLs before shipping** |
 | Streaming replies | Next after the chat loop is proven end to end. SSE from FastAPI, `ReadableStream` in the panel |
 | Persisting sessions and messages | Chat transcripts still live in panel state. Accepted solutions are saved (see above), which is the data "you solved this pattern last week" needs |
-| Using saved solutions in hints | Not built. The tutor does not read the `solutions` table yet |
+| Using saved solutions in hints | Built 2026-10-03 by topic-tag overlap (see *Recall*). The NeetCode pattern map and `pgvector` remain the upgrade path |
 | Quota and rate limit | Per-user daily hint count from a usage log; in-memory bucket per user |
 
 **Scope guard.** The failure mode for this project is building forever and

@@ -7,9 +7,10 @@ status without knowing which vendor is behind it. main.py imports nothing
 vendor-specific; that is the whole point.
 """
 
+from collections.abc import Sequence
 from typing import Protocol
 
-from ..schemas import ChatRequest, ChatResponse
+from ..schemas import ChatRequest, ChatResponse, PriorSolution
 
 
 class ProviderError(Exception):
@@ -38,7 +39,10 @@ class Provider(Protocol):
     name: str
     model: str
 
-    async def chat(self, request: ChatRequest) -> ChatResponse: ...
+    async def chat(self, request: ChatRequest, prior: Sequence[PriorSolution] = ()) -> ChatResponse:
+        """One tutoring turn. `prior` is what recall found among the user's
+        saved solutions; it goes into the prompt's stable part."""
+        ...
 
     async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
         """A one-off request outside the tutoring chat — its own instructions,

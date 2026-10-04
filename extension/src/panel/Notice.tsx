@@ -24,8 +24,9 @@ export function Notice({ title = "Before you send your first message" }: { title
     <div className="notice-card" role="note">
       <p className="notice-title">{title}</p>
       <p>
-        Each message sends the problem statement, the code in your editor, and this chat to OpenAI to
-        generate a reply — never your login or account details.
+        Each message sends the problem statement, the code in your editor, this chat, and short
+        summaries of solutions you&rsquo;ve saved to OpenAI to generate a reply — never your login or
+        account details.
       </p>
       <p>
         When LeetCode accepts a submission, or you open one it accepted earlier, the accepted code is

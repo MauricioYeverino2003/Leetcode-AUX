@@ -67,6 +67,7 @@ def record(
             "code_chars": len(request.code.code) if request.code else 0,
             "code_language": request.code.language if request.code else None,
             "turns": len(request.messages),
+            "recalled": len(response.prior_solutions),
             "last_message": last_user,
         },
         "prompt": response.prompt,

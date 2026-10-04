@@ -6,7 +6,9 @@ problem and the user's code are presented. Providers only decide how to get
 this text to their API. Swapping vendors must not change the tutor.
 """
 
-from .schemas import ChatRequest, SolutionRequest
+from collections.abc import Sequence
+
+from .schemas import ChatRequest, PriorSolution, SolutionRequest
 
 SYSTEM_PROMPT = """\
 You are LeetCode AUX, a tutor sitting beside someone who is solving a problem \
@@ -27,24 +29,54 @@ When their code is provided, read it closely. Point at specific lines and ask \
 what they expect a line to do. A bug they find themselves is worth ten you \
 point out.
 
+Sometimes you are also given problems they have already solved, each with a \
+short summary of how. Use them. If one shares the approach, name the problem \
+and say in a sentence what carries over — then let them do the carrying. Say \
+no more about the old solution than its summary does, and never reproduce its \
+code. If they have solved this very problem before, say so and ask what they \
+remember of it.
+
 Keep replies short: a few sentences, one idea at a time. Plain prose — no \
 headers, no bullet lists.
 """
 
 
-def problem_block(request: ChatRequest) -> str:
-    """The problem as the model should see it. Stable for a whole session, so
-    providers put it where their caching works best."""
+def problem_block(request: ChatRequest, prior: Sequence[PriorSolution] = ()) -> str:
+    """The problem as the model should see it, followed by any recalled prior
+    solutions. Stable for a whole session — it changes only when a new
+    solution is saved — so providers put it where their caching works best."""
     p = request.problem
     if p is None:
-        return "No problem context was provided — ask what they're working on."
+        text = "No problem context was provided — ask what they're working on."
+    else:
+        header = p.title or p.slug
+        if p.difficulty:
+            header += f" ({p.difficulty})"
+        statement = p.statement or "(statement not available)"
+        text = f"The problem they are working on:\n\n{header}\n\n{statement}"
 
-    header = p.title or p.slug
-    if p.difficulty:
-        header += f" ({p.difficulty})"
+    recalled = prior_block(prior)
+    return f"{text}\n\n{recalled}" if recalled else text
 
-    statement = p.statement or "(statement not available)"
-    return f"The problem they are working on:\n\n{header}\n\n{statement}"
+
+def prior_block(prior: Sequence[PriorSolution]) -> str | None:
+    """The user's recalled solutions — summaries only, never code."""
+    if not prior:
+        return None
+
+    lines = ["Problems they have already solved, from their saved solutions:"]
+    for s in prior:
+        name = s.title or s.slug
+        if s.difficulty:
+            name += f" ({s.difficulty})"
+        head = f"- {name}"
+        if s.topic_tags:
+            head += " [" + ", ".join(s.topic_tags) + "]"
+        if s.same_problem:
+            head += " — this is the problem they are working on now"
+        lines.append(head)
+        lines.append(f"  {s.summary.strip()}")
+    return "\n".join(lines)
 
 
 def code_block(request: ChatRequest) -> str | None:

@@ -14,13 +14,15 @@ because it changes every message; putting it earlier would invalidate the
 cache on every turn.
 """
 
+from collections.abc import Sequence
+
 import anthropic
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import BetaMessage
 
 from ..config import settings
 from ..prompt import SYSTEM_PROMPT, code_block, problem_block
-from ..schemas import ChatRequest, ChatResponse, Usage
+from ..schemas import ChatRequest, ChatResponse, PriorSolution, Usage
 from .base import CUT_SHORT_MARKER, REFUSAL_REPLY, NoCredentials, ProviderError
 
 
@@ -52,12 +54,12 @@ class ClaudeProvider:
         self._client = c
         return c
 
-    async def chat(self, request: ChatRequest) -> ChatResponse:
+    async def chat(self, request: ChatRequest, prior: Sequence[PriorSolution] = ()) -> ChatResponse:
         system = [
             {"type": "text", "text": SYSTEM_PROMPT},
             {
                 "type": "text",
-                "text": problem_block(request),
+                "text": problem_block(request, prior),
                 "cache_control": {"type": "ephemeral"},
             },
         ]

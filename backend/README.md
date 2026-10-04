@@ -33,7 +33,7 @@ tutor's behaviour, which lives in `app/prompt.py` and is shared by both.
 | --- | --- | --- |
 | `GET /health` | no | liveness + which model is configured |
 | `GET /me` | bearer | echoes the verified user — test auth without a Claude call |
-| `POST /chat` | bearer | transcript + problem + code in, Claude's reply out |
+| `POST /chat` | bearer | transcript + problem + code in, the tutor's reply out — with the user's related saved solutions recalled into the prompt |
 | `POST /solutions` | bearer | an accepted submission in; stores the code and a short model-written summary, once per submission |
 
 Interactive docs at `http://127.0.0.1:8000/docs`.
@@ -50,6 +50,15 @@ A submission that is already saved is returned as-is with no model call. So is
 one whose code is identical to a solution already saved for the same problem
 — resubmitting the same code gets a new id from LeetCode but is not stored
 twice. Summaries always run at effort `low`, whatever `LLM_EFFORT` is.
+
+## Recall
+
+On every `/chat`, the backend looks for the user's saved solutions whose
+LeetCode topic tags overlap the current problem's (`app/recall.py`), ignoring
+tags that nearly every problem carries, and puts up to three of their
+summaries — never their code — after the problem statement in the prompt. The
+response lists them in `prior_solutions`, and the panel shows them under the
+reply. If the lookup fails, the chat goes ahead without it.
 
 ## Try it by hand
 

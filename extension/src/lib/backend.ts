@@ -15,6 +15,8 @@ export type ChatRequest = {
     title?: string | null;
     difficulty?: string | null;
     statement?: string | null;
+    /** LeetCode's topic tags — what the backend matches saved solutions on. */
+    topic_tags?: string[];
   };
   code?: {
     language: string | null;
@@ -42,6 +44,8 @@ export type ChatResponse = {
   };
   /** Estimated; null when the backend has no price for the model. */
   cost_usd: number | null;
+  /** The user's saved solutions the tutor was shown for this reply. */
+  prior_solutions: { slug: string; title: string | null }[];
 };
 
 /** What the panel gets back: the response plus its own measurement of the

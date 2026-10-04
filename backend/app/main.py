@@ -4,14 +4,22 @@ from time import perf_counter
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import benchmarks, db
+from . import benchmarks, db, recall
 from .auth import User, current_user, user_token
 from .config import settings
 from .prices import estimate_cost
 from .prompt import SUMMARY_PROMPT, solution_block
 from .providers import ProviderError, get_provider
 from .providers.base import REFUSAL_REPLY
-from .schemas import ChatRequest, ChatResponse, SolutionRequest, SolutionResponse, Timing
+from .schemas import (
+    ChatRequest,
+    ChatResponse,
+    PriorRef,
+    PriorSolution,
+    SolutionRequest,
+    SolutionResponse,
+    Timing,
+)
 
 log = logging.getLogger("leetcode-aux")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -59,17 +67,31 @@ def me(user: User = Depends(current_user)) -> User:
     return user
 
 
+async def _recall(token: str, request: ChatRequest) -> list[PriorSolution]:
+    """Recall must never take the chat down with it: a database problem is
+    logged and the tutor simply goes without."""
+    if request.problem is None:
+        return []
+    try:
+        return await recall.recall(token, request.problem)
+    except db.DbError as e:
+        log.warning("recall skipped: %s", e.log)
+        return []
+
+
 @app.post("/chat")
 async def chat(
     request: ChatRequest,
     http: Request,
     user: User = Depends(current_user),
+    token: str = Depends(user_token),
 ) -> ChatResponse:
     provider = get_provider()
+    prior = await _recall(token, request)
 
     model_started = perf_counter()
     try:
-        response = await provider.chat(request)
+        response = await provider.chat(request, prior)
     except ProviderError as e:
         log.error("%s: %s", provider.name, e.log)
         raise HTTPException(e.status, e.detail) from None
@@ -80,6 +102,7 @@ async def chat(
         backend_ms=round((finished - http.state.arrived) * 1000),
     )
     response.cost_usd = estimate_cost(response.model, response.usage)
+    response.prior_solutions = [PriorRef(slug=s.slug, title=s.title) for s in prior]
 
     benchmarks.record(
         source="panel",
@@ -91,9 +114,9 @@ async def chat(
 
     u, t = response.usage, response.timing
     log.info(
-        "chat user=%s provider=%s model=%s effort=%s in=%d out=%d reasoning=%d "
+        "chat user=%s provider=%s model=%s effort=%s recalled=%d in=%d out=%d reasoning=%d "
         "cache_read=%d cache_write=%d model_ms=%d backend_ms=%d cost=%s",
-        user.id, provider.name, response.model, settings.llm_effort or "default",
+        user.id, provider.name, response.model, settings.llm_effort or "default", len(prior),
         u.input_tokens, u.output_tokens, u.reasoning_tokens,
         u.cache_read_input_tokens, u.cache_creation_input_tokens,
         t.model_ms, t.backend_ms,

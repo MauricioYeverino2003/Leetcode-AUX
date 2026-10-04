@@ -21,6 +21,9 @@ class ProblemContext(BaseModel):
     title: str | None = Field(default=None, max_length=300)
     difficulty: str | None = Field(default=None, max_length=20)
     statement: str | None = Field(default=None, max_length=30_000)
+    # LeetCode's topic tags, e.g. ["Array", "Hash Table"] — what recall
+    # matches the user's saved solutions on.
+    topic_tags: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=30)
 
 
 class CodeContext(BaseModel):
@@ -69,6 +72,26 @@ class Timing(BaseModel):
     backend_ms: int = 0
 
 
+class PriorSolution(BaseModel):
+    """One of the user's saved solutions, as recalled for the tutor. It never
+    carries the code: the tutor gets the summary only."""
+
+    slug: str
+    title: str | None = None
+    difficulty: str | None = None
+    topic_tags: list[str] = Field(default_factory=list)
+    summary: str
+    # True when it is the very problem they are working on now.
+    same_problem: bool = False
+
+
+class PriorRef(BaseModel):
+    """What the panel is told about a recalled solution."""
+
+    slug: str
+    title: str | None = None
+
+
 class ChatResponse(BaseModel):
     reply: str
     model: str
@@ -80,6 +103,8 @@ class ChatResponse(BaseModel):
     # Exactly what was sent to the model, for the benchmark log. Excluded from
     # the JSON the client receives.
     prompt: dict | None = Field(default=None, exclude=True)
+    # Which of the user's saved solutions the tutor was shown for this reply.
+    prior_solutions: list[PriorRef] = Field(default_factory=list)
 
 
 class SolutionRequest(BaseModel):

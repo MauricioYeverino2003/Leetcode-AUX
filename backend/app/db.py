@@ -97,6 +97,49 @@ async def find_same_code(token: str, problem_slug: str, code: str) -> dict | Non
     return None
 
 
+# Everything recall needs — and not the code, which the tutor never sees.
+RECALL_COLUMNS = "problem_slug,problem_title,difficulty,topic_tags,summary,created_at"
+
+
+def _array_literal(values: list[str]) -> str:
+    """A PostgREST array literal with every element double-quoted. Tags
+    contain spaces ("Hash Table"); quoting all of them is simpler than
+    deciding which need it."""
+    quoted = ['"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"' for v in values]
+    return "{" + ",".join(quoted) + "}"
+
+
+async def list_solutions_by_tags(token: str, tags: list[str], limit: int = 50) -> list[dict]:
+    """The caller's solutions sharing at least one of these tags, newest
+    first — `ov` is Postgres array overlap."""
+    response = await _send(
+        "GET",
+        token,
+        params={
+            "topic_tags": f"ov.{_array_literal(tags)}",
+            "select": RECALL_COLUMNS,
+            "order": "created_at.desc",
+            "limit": str(limit),
+        },
+    )
+    return response.json()
+
+
+async def list_solutions_for_problem(token: str, problem_slug: str, limit: int = 5) -> list[dict]:
+    """The caller's solutions to one problem, newest first."""
+    response = await _send(
+        "GET",
+        token,
+        params={
+            "problem_slug": f"eq.{problem_slug}",
+            "select": RECALL_COLUMNS,
+            "order": "created_at.desc",
+            "limit": str(limit),
+        },
+    )
+    return response.json()
+
+
 async def insert_solution(token: str, row: dict) -> None:
     """Stores one solution as the caller. `user_id` is not sent: the table
     fills it in from the token. A submission that is already there is left

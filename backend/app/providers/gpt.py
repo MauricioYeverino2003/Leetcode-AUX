@@ -19,6 +19,7 @@ content part in the output rather than a stop reason.
 """
 
 import os
+from collections.abc import Sequence
 
 import openai
 from openai import AsyncOpenAI
@@ -26,7 +27,7 @@ from openai.types.responses import Response
 
 from ..config import settings
 from ..prompt import SYSTEM_PROMPT, code_block, problem_block
-from ..schemas import ChatRequest, ChatResponse, Usage
+from ..schemas import ChatRequest, ChatResponse, PriorSolution, Usage
 from .base import CUT_SHORT_MARKER, REFUSAL_REPLY, NoCredentials, ProviderError
 
 
@@ -49,8 +50,8 @@ class OpenAIProvider:
             self._client = AsyncOpenAI(api_key=key)
         return self._client
 
-    async def chat(self, request: ChatRequest) -> ChatResponse:
-        instructions = f"{SYSTEM_PROMPT}\n\n{problem_block(request)}"
+    async def chat(self, request: ChatRequest, prior: Sequence[PriorSolution] = ()) -> ChatResponse:
+        instructions = f"{SYSTEM_PROMPT}\n\n{problem_block(request, prior)}"
         input_items = _build_input(request)
 
         response = await self._create(instructions=instructions, input=input_items, effort=settings.llm_effort)
