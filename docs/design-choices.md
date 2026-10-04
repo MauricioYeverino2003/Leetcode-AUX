@@ -556,6 +556,19 @@ the cache breakpoint — and the user's current code rides in the *last* user tu
 as a separate text block. Putting the code anywhere earlier would invalidate
 the cache on every keystroke.
 
+**Update 2026-10-03: the transcript was breaking its own cache.** The first
+live check of cache hits showed `cache_read=0` on every message. The benchmark
+log, which records each full prompt, showed why: the newest user turn was sent
+as `[code, message]` and then, once it became history, as a plain `message`
+string. The cache compares a request with the previous one from the start
+and stops at the first difference, so matching stopped at the start of the
+previous turn. Fixed by shaping every user turn the same way — a list of text
+parts, message first: `[message, code]` when newest, `[message]` as history
+— so the only difference between consecutive requests is the code at the
+end. The gain is one message of cached text per turn; the larger fact is that
+the cacheable part must reach the vendor's 1,024-token minimum on its own,
+which a short problem only does a few turns in.
+
 **Refusal fallback is on.** `fallbacks: "default"` re-runs a safety-declined
 request on Anthropic's recommended fallback model server-side, so a user gets an
 answer rather than a refusal.

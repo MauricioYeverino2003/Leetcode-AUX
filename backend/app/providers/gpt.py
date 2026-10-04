@@ -5,7 +5,7 @@ Same tutor, different plumbing:
 
     instructions   tutoring rules + the problem statement   stable per problem
     input          the transcript                          changes per turn
-    last item      the user's current code + message       changes per keystroke
+    last item      the user's message + current code       changes per keystroke
 
 OpenAI's prompt caching is automatic — any request whose prefix matches a
 recent one (past ~1,024 tokens) is served from cache with no breakpoints to
@@ -117,16 +117,26 @@ def _to_chat_response(response: Response, prompt: dict) -> ChatResponse:
 
 
 def _build_input(request: ChatRequest) -> list[dict]:
-    history = [{"role": m.role, "content": m.content} for m in request.messages[:-1]]
-    last = request.messages[-1]
+    """Every user turn is a list of text parts with the message first, so a
+    turn is shaped the same whether it is the newest — `[message, code]` — or
+    history — `[message]`. The cache compares a request with the previous one
+    from the start and stops at the first difference; with this shape the only
+    difference is the code at the very end, so each turn's message joins the
+    cached part once it becomes history. (Sending history as plain strings and
+    the code first cost one turn of cache per message — found 2026-10-03.)"""
+    items: list[dict] = []
+    for m in request.messages[:-1]:
+        if m.role == "user":
+            items.append({"role": "user", "content": [{"type": "input_text", "text": m.content}]})
+        else:
+            items.append({"role": "assistant", "content": m.content})
 
-    # Two text parts in one turn, mirroring the Anthropic provider.
-    content: list[dict] = []
+    last = request.messages[-1]
+    content = [{"type": "input_text", "text": last.content}]
     if code := code_block(request):
         content.append({"type": "input_text", "text": code})
-    content.append({"type": "input_text", "text": last.content})
-
-    return [*history, {"role": "user", "content": content}]
+    items.append({"role": "user", "content": content})
+    return items
 
 
 def _reply_text(response: Response) -> str:

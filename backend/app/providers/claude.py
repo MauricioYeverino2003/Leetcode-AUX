@@ -131,17 +131,24 @@ def _to_chat_response(response: BetaMessage, prompt: dict) -> ChatResponse:
 
 
 def _build_messages(request: ChatRequest) -> list[dict]:
-    history = [{"role": m.role, "content": m.content} for m in request.messages[:-1]]
-    last = request.messages[-1]
+    """Every user turn is a list of text blocks with the message first, so a
+    turn is shaped the same whether it is the newest — `[message, code]` — or
+    history — `[message]`. Same reasoning as the OpenAI provider: the only
+    difference between one request and the next is then the code at the very
+    end, which is what lets the earlier turns be served from cache."""
+    messages: list[dict] = []
+    for m in request.messages[:-1]:
+        if m.role == "user":
+            messages.append({"role": "user", "content": [{"type": "text", "text": m.content}]})
+        else:
+            messages.append({"role": "assistant", "content": m.content})
 
-    # The current code and the message travel as two text blocks in one turn,
-    # so the model sees them together without us splicing strings.
-    content: list[dict] = []
+    last = request.messages[-1]
+    content = [{"type": "text", "text": last.content}]
     if code := code_block(request):
         content.append({"type": "text", "text": code})
-    content.append({"type": "text", "text": last.content})
-
-    return [*history, {"role": "user", "content": content}]
+    messages.append({"role": "user", "content": content})
+    return messages
 
 
 def _reply_text(response: BetaMessage) -> str:
