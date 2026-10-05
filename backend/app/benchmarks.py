@@ -4,10 +4,15 @@ replay runner for comparing configurations on identical input.
 
     uv run python -m app.benchmarks report            -> docs/benchmarks.md
     uv run python -m app.benchmarks run --yes         -> replay benchmarks/cases.json
+    uv run python -m app.benchmarks run --yes --case help-empty-stub
 
 Every call — from the panel or from `run` — lands in the same JSONL file with
 the same shape, so the report can compare them. The file holds prompts and
 user code and is gitignored; the markdown it generates is committed.
+
+Each replay case carries an `expect` line: what a good reply does. Nothing
+grades against it — the report prints it above the replies, one per prompt
+version (PROMPT_VERSION in app/prompt.py), and the judging is done by reading.
 """
 
 from __future__ import annotations
@@ -15,6 +20,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -23,7 +29,8 @@ from time import perf_counter
 
 from .config import BACKEND_DIR, settings
 from .prices import PRICES_AS_OF, estimate_cost, lookup
-from .schemas import ChatRequest, ChatResponse, Timing
+from .prompt import PROMPT_VERSION, SYSTEM_PROMPT, prior_block
+from .schemas import ChatRequest, ChatResponse, PriorRef, PriorSolution, Timing
 
 CASES_FILE = BACKEND_DIR / "benchmarks" / "cases.json"
 REPORT_FILE = BACKEND_DIR.parent / "docs" / "benchmarks.md"
@@ -41,6 +48,7 @@ def record(
     request: ChatRequest,
     response: ChatResponse,
     case: str | None = None,
+    expect: str | None = None,
 ) -> None:
     """Append one line describing a model call. No-op when disabled."""
     path = settings.benchmarks_file
@@ -52,10 +60,12 @@ def record(
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source": source,
         "case": case,
+        "expect": expect,
         "user_id": user_id,
         "provider": provider,
         "model": response.model,
         "effort": settings.llm_effort,
+        "prompt_version": PROMPT_VERSION,
         "timing": response.timing.model_dump(),
         "usage": response.usage.model_dump(),
         "cost_usd": response.cost_usd,
@@ -123,6 +133,60 @@ def _truncate(text: str | None, limit: int) -> str:
     return flat if len(flat) <= limit else flat[: limit - 1] + "…"
 
 
+def _version(row: dict) -> int:
+    """Rows recorded before prompt versions existed were all version 1."""
+    return row.get("prompt_version") or 1
+
+
+def _sentences(text: str) -> int:
+    """Rough count, for the 'at most three sentences' rule. Good enough to
+    spot a reply that is clearly over; not a parser."""
+    return max(1, len(re.findall(r"[.!?]+(?=\s|$)", text))) if text.strip() else 0
+
+
+def _replay_section(rows: list[dict]) -> list[str]:
+    """Each replay case with its expectation and its latest reply under every
+    prompt version, newest first — the part of the report meant to be read."""
+    by_case: dict[str, dict[int, dict]] = {}
+    for r in rows:  # chronological, so a later run of the same case replaces an earlier one
+        if r["source"] == "bench" and r.get("case"):
+            by_case.setdefault(r["case"], {})[_version(r)] = r
+
+    if not by_case:
+        return []
+
+    out = [
+        "## Replay cases",
+        "",
+        "The latest reply to each case under each prompt version, newest version "
+        "first. Nothing here is graded automatically: read each reply against "
+        "its expectation.",
+        "",
+    ]
+    for name, versions in by_case.items():
+        newest = versions[max(versions)]
+        expect = next((versions[v].get("expect") for v in sorted(versions, reverse=True) if versions[v].get("expect")), None)
+
+        out.append(f"### {name}")
+        out.append("")
+        if expect:
+            out.append(f"**Expect:** {expect}")
+            out.append("")
+        out.append(f"**User:** {_truncate(newest['request'].get('last_message'), 300)}")
+        out.append("")
+        for v in sorted(versions, reverse=True):
+            r = versions[v]
+            reply = (r.get("reply") or "").strip()
+            out.append(
+                f"**Prompt v{v}** — {len(reply.split())} words, {_sentences(reply)} sentence(s) · "
+                f"{r['model']} · effort {r.get('effort') or 'default'} · {_fmt_cost(r.get('cost_usd'))}"
+            )
+            out.append("")
+            out.extend(f"> {line}" if line.strip() else ">" for line in reply.splitlines())
+            out.append("")
+    return out
+
+
 def build_report(rows: list[dict], samples: int) -> str:
     out: list[str] = []
     out.append("# Benchmarks")
@@ -142,25 +206,25 @@ def build_report(rows: list[dict], samples: int) -> str:
     # --- summary, grouped by configuration
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
-        groups[(r["source"], r["provider"], r["model"], r.get("effort") or "default")].append(r)
+        groups[(r["source"], r["provider"], r["model"], r.get("effort") or "default", _version(r))].append(r)
 
     out.append("## Summary by configuration")
     out.append("")
     out.append(
-        "| Source | Provider | Model | Effort | n | model_ms p50 | model_ms p95 "
+        "| Source | Provider | Model | Effort | Prompt | n | model_ms p50 | model_ms p95 "
         "| in (uncached) | out | reasoning | cache hit | cost/call | cost total |"
     )
-    out.append("| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    out.append("| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 
     for key in sorted(groups):
-        source, provider, model, effort = key
+        source, provider, model, effort, version = key
         g = groups[key]
         ms = [r["timing"]["model_ms"] for r in g]
         usage = [r["usage"] for r in g]
         costs = [r["cost_usd"] for r in g if r.get("cost_usd") is not None]
         cache_hits = sum(1 for u in usage if u["cache_read_input_tokens"] > 0)
         out.append(
-            f"| {source} | {provider} | {model} | {effort} | {len(g)} "
+            f"| {source} | {provider} | {model} | {effort} | v{version} | {len(g)} "
             f"| {_percentile(ms, 0.5)} | {_percentile(ms, 0.95)} "
             f"| {round(_mean([u['input_tokens'] for u in usage]))} "
             f"| {round(_mean([u['output_tokens'] for u in usage]))} "
@@ -173,9 +237,13 @@ def build_report(rows: list[dict], samples: int) -> str:
     out.append(
         "`in (uncached)` is input billed at the full rate; cached input is counted "
         "under cache hit. `reasoning` is the part of `out` spent thinking before "
-        "the visible reply (OpenAI reports it; Anthropic folds it into `out`)."
+        "the visible reply (OpenAI reports it; Anthropic folds it into `out`). "
+        "`Prompt` is PROMPT_VERSION in `app/prompt.py`."
     )
     out.append("")
+
+    # --- replay cases, read against their expectations
+    out.extend(_replay_section(rows))
 
     # --- samples
     if samples > 0:
@@ -224,8 +292,6 @@ def _load_cases() -> list[dict]:
 def _estimate_run_cost(cases: list[dict], model: str, repeat: int) -> float | None:
     """Rough pre-flight estimate: ~4 chars per input token, ~1,200 output tokens
     per call including reasoning. Only for the confirmation prompt."""
-    from .prompt import SYSTEM_PROMPT
-
     price = lookup(model)
     if price is None:
         return None
@@ -233,6 +299,7 @@ def _estimate_run_cost(cases: list[dict], model: str, repeat: int) -> float | No
     for case in cases:
         req = case["request"]
         chars = len(SYSTEM_PROMPT)
+        chars += len(prior_block(_prior(case)) or "")
         chars += len((req.get("problem") or {}).get("statement") or "")
         chars += len((req.get("code") or {}).get("code") or "")
         chars += sum(len(m["content"]) for m in req["messages"])
@@ -240,17 +307,30 @@ def _estimate_run_cost(cases: list[dict], model: str, repeat: int) -> float | No
     return total * repeat
 
 
-async def run(repeat: int, yes: bool) -> None:
+def _prior(case: dict) -> list[PriorSolution]:
+    """A case's stand-in for recall: the saved solutions the tutor is shown.
+    The replay has no user and no database, so the case file supplies them."""
+    return [PriorSolution.model_validate(p) for p in case.get("prior", [])]
+
+
+async def run(repeat: int, yes: bool, only: list[str] | None = None) -> None:
     from .providers import get_provider
 
     cases = _load_cases()
+    if only:
+        unknown = sorted(set(only) - {c["name"] for c in cases})
+        if unknown:
+            print(f"No such case: {', '.join(unknown)}. Cases: {', '.join(c['name'] for c in cases)}")
+            return
+        cases = [c for c in cases if c["name"] in only]
+
     provider = get_provider()
     calls = len(cases) * repeat
     estimate = _estimate_run_cost(cases, provider.model, repeat)
 
     print(
         f"{calls} call(s): {len(cases)} case(s) x {repeat} on {provider.name}/{provider.model} "
-        f"effort={settings.llm_effort or 'default'} — rough estimate "
+        f"effort={settings.llm_effort or 'default'} prompt v{PROMPT_VERSION} — rough estimate "
         f"{_fmt_cost(estimate) if estimate is not None else 'unknown (no price entry)'}"
     )
     if not yes:
@@ -264,11 +344,13 @@ async def run(repeat: int, yes: bool) -> None:
     for i in range(repeat):
         for case in cases:
             request = ChatRequest.model_validate(case["request"])
+            prior = _prior(case)
             started = perf_counter()
-            response = await provider.chat(request)
+            response = await provider.chat(request, prior)
             ms = round((perf_counter() - started) * 1000)
             response.timing = Timing(model_ms=ms, backend_ms=ms)
             response.cost_usd = estimate_cost(response.model, response.usage)
+            response.prior_solutions = [PriorRef(slug=s.slug, title=s.title) for s in prior]
             record(
                 source="bench",
                 user_id=None,
@@ -276,6 +358,7 @@ async def run(repeat: int, yes: bool) -> None:
                 request=request,
                 response=response,
                 case=case["name"],
+                expect=case.get("expect"),
             )
             u = response.usage
             total_cost += response.cost_usd or 0.0
@@ -303,12 +386,19 @@ def main(argv: list[str] | None = None) -> None:
     p_run = sub.add_parser("run", help="replay benchmarks/cases.json against the configured provider")
     p_run.add_argument("--repeat", type=int, default=1, help="run every case this many times")
     p_run.add_argument("--yes", action="store_true", help="actually spend tokens; without it, only estimate")
+    p_run.add_argument(
+        "--case",
+        action="append",
+        dest="cases",
+        metavar="NAME",
+        help="replay only this case; repeat the flag for several",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "report":
         report(args.samples)
     elif args.command == "run":
-        asyncio.run(run(args.repeat, args.yes))
+        asyncio.run(run(args.repeat, args.yes, args.cases))
 
 
 if __name__ == "__main__":

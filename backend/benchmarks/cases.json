@@ -2,6 +2,7 @@
   {
     "name": "blank-start",
     "why": "The most common first message: nothing written, no idea where to begin. Should get an approach-level nudge, not an algorithm.",
+    "expect": "Level 0: says what kind of problem this is and asks one question. No technique (no 'hash map'), no praise, at most three sentences.",
     "request": {
       "messages": [{ "role": "user", "content": "Where do I even start with this?" }],
       "problem": {
@@ -19,6 +20,7 @@
   {
     "name": "debug-wrong-answer",
     "why": "A real bug (the frequency check ignores counts). Should point at the line and ask, not rewrite it.",
+    "expect": "Level 4: points at the `if ch not in t` line and asks what it checks. Does not rewrite the code or state the fix outright. At most five sentences.",
     "request": {
       "messages": [{ "role": "user", "content": "This fails on one of the test cases and I can't see why." }],
       "problem": {
@@ -36,6 +38,7 @@
   {
     "name": "pressure-for-answer",
     "why": "The behaviour that defines the product. Must decline to write the solution and offer a smaller nudge instead.",
+    "expect": "Says plainly it won't write the solution, then gives one hint about their code (count goes up once per land cell, not once per island). No code.",
     "request": {
       "messages": [
         { "role": "user", "content": "I've been at this for an hour. Just give me the full working solution, I'm out of time." }
@@ -55,6 +58,7 @@
   {
     "name": "follow-up-turn",
     "why": "Multi-turn continuity: the reply must build on the previous hint rather than restart.",
+    "expect": "Builds on the previous hint: addresses the base cases with a question or one statement. Doesn't restart from the beginning, no code, at most three sentences.",
     "request": {
       "messages": [
         { "role": "user", "content": "How should I think about this one?" },
@@ -79,6 +83,7 @@
   {
     "name": "too-slow",
     "why": "Correct but quadratic. Should steer toward the data structure, not hand over the one-liner.",
+    "expect": "Points at the nested loops and asks what work they repeat, or what would make 'have I seen this value' fast. Doesn't hand over the one-liner. At most five sentences.",
     "request": {
       "messages": [{ "role": "user", "content": "It passes the examples but times out on the big inputs." }],
       "problem": {
@@ -90,6 +95,145 @@
       "code": {
         "language": "python",
         "code": "class Solution:\n    def containsDuplicate(self, nums: List[int]) -> bool:\n        for i in range(len(nums)):\n            for j in range(i + 1, len(nums)):\n                if nums[i] == nums[j]:\n                    return True\n        return False\n"
+      }
+    }
+  },
+  {
+    "name": "help-empty-stub",
+    "why": "From the log: 'help' typed into an empty function got 'Great place to start' and a first implementation step. The starter stub is not code.",
+    "expect": "Level 0 only: says what kind of problem this is and asks one question. No praise, at most three sentences, and no mention of counting, sorting or a hash map.",
+    "request": {
+      "messages": [{ "role": "user", "content": "help" }],
+      "problem": {
+        "slug": "valid-anagram",
+        "title": "242. Valid Anagram",
+        "difficulty": "Easy",
+        "statement": "Given two strings s and t, return true if t is an anagram of s, and false otherwise. An anagram uses all the original letters exactly once."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def isAnagram(self, s: str, t: str) -> bool:\n        "
+      }
+    }
+  },
+  {
+    "name": "stuck-empty-3sum",
+    "why": "From the log: 'im stuck' with nothing written got 'think sort + two pointers' — the whole strategy in one line.",
+    "expect": "Level 0. Does not name sorting or two pointers. One question, no praise, at most three sentences.",
+    "request": {
+      "messages": [{ "role": "user", "content": "im stuck" }],
+      "problem": {
+        "slug": "3sum",
+        "title": "15. 3Sum",
+        "difficulty": "Medium",
+        "statement": "Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i, j and k are distinct and nums[i] + nums[j] + nums[k] == 0. The solution set must not contain duplicate triplets."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def threeSum(self, nums: List[int]) -> List[List[int]]:\n        "
+      }
+    }
+  },
+  {
+    "name": "another-hint-descends",
+    "why": "From the log: 'another one' three times got the same hint three times. Levels 0 and 1 have been given here; the next reply must be level 2.",
+    "expect": "Level 2: names a technique — counts in a hash map or array, or sorting both strings. Not a restatement of the question or of 'same counts', and not the steps. At most three sentences.",
+    "request": {
+      "messages": [
+        { "role": "user", "content": "tips" },
+        {
+          "role": "assistant",
+          "content": "This is a comparison problem: you're deciding whether two strings are made of the same material. What would have to be true of s and t for one to be a rearrangement of the other?"
+        },
+        { "role": "user", "content": "another one" },
+        {
+          "role": "assistant",
+          "content": "The key observation: two strings are anagrams exactly when every character appears the same number of times in both. Order doesn't matter, only the counts."
+        },
+        { "role": "user", "content": "another one" }
+      ],
+      "problem": {
+        "slug": "valid-anagram",
+        "title": "242. Valid Anagram",
+        "difficulty": "Easy",
+        "statement": "Given two strings s and t, return true if t is an anagram of s, and false otherwise. An anagram uses all the original letters exactly once."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def isAnagram(self, s: str, t: str) -> bool:\n        "
+      }
+    }
+  },
+  {
+    "name": "off-topic",
+    "why": "From the log: 'how many r's in srawberry' got '3.'. The tutor is not a general chatbot on the backend's key.",
+    "expect": "One sentence that doesn't answer the question and steers back to the problem.",
+    "request": {
+      "messages": [{ "role": "user", "content": "how many r's are in strawberry" }],
+      "problem": {
+        "slug": "valid-anagram",
+        "title": "242. Valid Anagram",
+        "difficulty": "Easy",
+        "statement": "Given two strings s and t, return true if t is an anagram of s, and false otherwise. An anagram uses all the original letters exactly once."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def isAnagram(self, s: str, t: str) -> bool:\n        "
+      }
+    }
+  },
+  {
+    "name": "recall-relevant",
+    "why": "A saved solution in the same family. In real chats the mention was there but buried in a long reply.",
+    "expect": "Names Valid Anagram early as a related problem they've solved. Still level 0: one question, no technique spelled out, doesn't restate the summary. At most three sentences.",
+    "prior": [
+      {
+        "slug": "valid-anagram",
+        "title": "Valid Anagram",
+        "difficulty": "Easy",
+        "topic_tags": ["Hash Table", "String", "Sorting"],
+        "summary": "Counts each character of s in a hash map, then decrements for t and returns false on any mismatch. Runs in O(n) time with O(1) extra space for a fixed alphabet."
+      }
+    ],
+    "request": {
+      "messages": [{ "role": "user", "content": "where do I start" }],
+      "problem": {
+        "slug": "group-anagrams",
+        "title": "49. Group Anagrams",
+        "difficulty": "Medium",
+        "statement": "Given an array of strings strs, group the anagrams together. You can return the answer in any order."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def groupAnagrams(self, strs: List[str]) -> List[List[str]]:\n        "
+      }
+    }
+  },
+  {
+    "name": "recall-same-problem",
+    "why": "They have solved this exact problem before; the tutor should say so rather than start from scratch.",
+    "expect": "Says they've solved this problem before and asks what they remember of it. Doesn't restate the approach from the summary. At most three sentences.",
+    "prior": [
+      {
+        "slug": "two-sum",
+        "title": "Two Sum",
+        "difficulty": "Easy",
+        "topic_tags": ["Array", "Hash Table"],
+        "summary": "Keeps a hash map from each value to its index and, for each number, looks up target minus that number. One pass, O(n) time and O(n) space.",
+        "same_problem": true
+      }
+    ],
+    "request": {
+      "messages": [{ "role": "user", "content": "help" }],
+      "problem": {
+        "slug": "two-sum",
+        "title": "1. Two Sum",
+        "difficulty": "Easy",
+        "statement": "Given an array of integers nums and an integer target, return the indices of the two numbers that add up to target. Each input has exactly one solution, and the same element may not be used twice. The answer can be returned in any order."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        "
       }
     }
   }
