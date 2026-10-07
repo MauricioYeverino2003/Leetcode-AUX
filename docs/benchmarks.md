@@ -1,6 +1,6 @@
 # Benchmarks
 
-_Generated 2026-10-05T22:37+00:00 by `uv run python -m app.benchmarks report` from 69 recorded calls. Costs are estimates from `app/prices.py` (prices as of 2026-09-30). Do not edit by hand._
+_Generated 2026-10-07T03:18+00:00 by `uv run python -m app.benchmarks report` from 92 recorded calls. Costs are estimates from `app/prices.py` (prices as of 2026-09-30). Do not edit by hand._
 
 ## Summary by configuration
 
@@ -9,8 +9,10 @@ _Generated 2026-10-05T22:37+00:00 by `uv run python -m app.benchmarks report` fr
 | bench | openai | gpt-5-2025-08-07 | default | v1 | 11 | 8233 | 10401 | 435 | 700 | 524 | 0/11 | $0.0075 | $0.0830 |
 | bench | openai | gpt-5-2025-08-07 | default | v2 | 17 | 6148 | 26128 | 441 | 836 | 723 | 0/17 | $0.0089 | $0.1515 |
 | bench | openai | gpt-5-2025-08-07 | default | v3 | 17 | 6438 | 16676 | 593 | 843 | 742 | 0/17 | $0.0092 | $0.1559 |
+| bench | openai | gpt-5-2025-08-07 | default | v4 | 17 | 10102 | 18035 | 652 | 603 | 523 | 0/17 | $0.0068 | $0.1163 |
 | panel | openai | gpt-5-2025-08-07 | default | v1 | 16 | 8159 | 13312 | 800 | 708 | 536 | 1/16 | $0.0081 | $0.1295 |
 | panel | openai | gpt-5-2025-08-07 | default | v2 | 8 | 14918 | 22316 | 920 | 1287 | 1120 | 0/8 | $0.0140 | $0.1121 |
+| panel | openai | gpt-5-2025-08-07 | default | v3 | 6 | 16690 | 24585 | 1074 | 1309 | 1205 | 0/6 | $0.0144 | $0.0866 |
 
 `in (uncached)` is input billed at the full rate; cached input is counted under cache hit. `reasoning` is the part of `out` spent thinking before the visible reply (OpenAI reports it; Anthropic folds it into `out`). `Prompt` is PROMPT_VERSION in `app/prompt.py`.
 
@@ -23,6 +25,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Level 0: says what kind of problem this is and asks one question. No technique (no 'hash map'), no praise, at most three sentences.
 
 **User:** Where do I even start with this?
+
+**Prompt v4** — 44 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0056
+
+> This is a pair-finding problem in an array, but you must return indices, not the values. As you scan the array, what would you need to know to decide whether the current number can pair with something you’ve already seen to reach the target?
 
 **Prompt v3** — 57 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0070
 
@@ -52,6 +58,11 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** This fails on one of the test cases and I can't see why.
 
+**Prompt v4** — 30 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0065
+
+> The culprit is the line: if ch not in t:.  
+> What do you expect this to do when s contains a character multiple times but t contains it fewer times?
+
 **Prompt v3** — 38 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0069
 
 > The line causing the issue is: if ch not in t:.  
@@ -78,6 +89,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Says plainly it won't write the solution, then gives one hint about their code (count goes up once per land cell, not once per island). No code.
 
 **User:** I've been at this for an hour. Just give me the full working solution, I'm out of time.
+
+**Prompt v4** — 40 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0082
+
+> I can’t give you the full solution, but here’s a hint. This is a connected-components-in-a-grid problem (graph traversal). When you see a '1', what will you do to mark all cells in that same island so they aren’t counted again?
 
 **Prompt v3** — 47 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0095
 
@@ -109,6 +124,10 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** Ok so it's like fibonacci? What do I do about the base cases though?
 
+**Prompt v4** — 16 words, 1 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0083
+
+> Yes; decide what the count should be for n=1 and n=2, then build up from there.
+
 **Prompt v3** — 43 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0081
 
 > Yes—f(n) = f(n−1) + f(n−2). The base cases are: 1 step has 1 way (just 1), and 2 steps have 2 ways (1+1 or 2). If you prefer starting from step 0, use f(0)=1 (do nothing) and f(1)=1; it yields the same sequence.
@@ -134,6 +153,11 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** It passes the examples but times out on the big inputs.
 
+**Prompt v4** — 35 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0054
+
+> The slowdown comes from this line: for j in range(i + 1, len(nums)):.  
+> In the worst case with no duplicates, how many comparisons do you expect these two nested loops to make as n grows?
+
 **Prompt v3** — 39 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0064
 
 > The bottleneck is this line: for j in range(i + 1, len(nums)):.  
@@ -156,6 +180,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Level 0 only: says what kind of problem this is and asks one question. No praise, at most three sentences, and no mention of counting, sorting or a hash map.
 
 **User:** help
+
+**Prompt v4** — 30 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0057
+
+> This is a string comparison problem about whether two strings contain the same multiset of letters. What quick early check could rule out impossible cases before you compare any letters?
 
 **Prompt v3** — 33 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0055
 
@@ -183,6 +211,10 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** im stuck
 
+**Prompt v4** — 34 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0065
+
+> This is an array sum-combination problem where you need triplets adding to zero without duplicates. If you fixed one number, what smaller problem would you try to solve with the rest of the array?
+
 **Prompt v3** — 41 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0075
 
 > This is a “find three numbers that add to a target, returning all unique combinations” problem. If you pick one number as a starting point, how could you systematically search for the other two while ensuring you don’t produce duplicate triplets?
@@ -208,6 +240,10 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** another one
 
+**Prompt v4** — 32 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0064
+
+> Use a character frequency counter: a hash map (or a fixed 26-length array if only lowercase a–z) to record how many times each char appears. Compare these counts for s and t.
+
 **Prompt v3** — 41 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0051
 
 > Use a character frequency counter: a dictionary (or Counter) that tracks how many times each character appears. If you know the alphabet is fixed (like lowercase a–z), a fixed-size array of counts also works. Alternatively, sort both strings and compare them.
@@ -225,6 +261,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** One sentence that doesn't answer the question and steers back to the problem.
 
 **User:** how many r's are in strawberry
+
+**Prompt v4** — 19 words, 1 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0056
+
+> Let’s get back to Valid Anagram—how would you decide if two strings contain exactly the same multiset of characters?
 
 **Prompt v3** — 19 words, 1 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0032
 
@@ -245,6 +285,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Names Valid Anagram early as a related problem they've solved. Still level 0: one question, no technique spelled out, doesn't restate the summary. At most three sentences.
 
 **User:** where do I start
+
+**Prompt v4** — 39 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0044
+
+> This is closely related to Valid Anagram. It’s a grouping problem: put words that are anagrams into the same bucket. What single property could you compute for each word so that all its anagrams have exactly the same value?
 
 **Prompt v3** — 37 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0058
 
@@ -269,6 +313,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Says they've solved this problem before and asks what they remember of it. Doesn't restate the approach from the summary. At most three sentences.
 
 **User:** help
+
+**Prompt v4** — 15 words, 1 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0045
+
+> This is the same problem you’ve already solved; what do you remember about your approach?
 
 **Prompt v3** — 57 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0059
 
@@ -295,6 +343,10 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** Wait so my logic is that the bounds are the possible open parentheses, given the *, and if [lower, upper] contain 0 between them, then it should be true no?
 
+**Prompt v4** — 47 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0108
+
+> Your idea is almost right: the interval tracks the possible number of opens. The flaw is that “0 in the final interval” isn’t sufficient if at any earlier point the lower bound dipped below 0, which means some prefix had too many ')' to be fixed later.
+
 **Prompt v3** — 80 words, 4 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0112
 
 > Your idea is right: lower/upper are the min/max possible unmatched “(”. Zero must be achievable at the end, and no prefix can force more “)” than available “(”.
@@ -316,6 +368,10 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** those two tips made sense but its still not working
 
+**Prompt v4** — 43 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0134
+
+> Reconsider this line: return True if (bound[0] <= 0 and bound[1] >= 0) else False. What must the minimum possible open count be at the end for the string to be valid—can it be negative, or does it have to be exactly zero?
+
 **Prompt v3** — 61 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0281
 
 > The line bound[0] -= 1 (in the ')' and '*' cases) is the culprit: it lets your lower bound go negative and you never bring it back up during the scan, which makes strings like "(*(" + ")" pass when they shouldn’t. After each character, if the minimum possible opens drops below zero, what should that minimum actually be, and why?
@@ -333,6 +389,10 @@ The latest reply to each case under each prompt version, newest version first. N
 
 **User:** what do you mean by clamp?
 
+**Prompt v4** — 78 words, 4 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0094
+
+> Clamp means force a value to stay within a limit. Here, the “lower bound” is the minimum possible number of unmatched “(”; it can’t be negative, because you can’t owe fewer than 0 opens. So after you update the bounds for a character, if the lower bound went below 0, reset it to 0 so that negativity doesn’t carry forward. You’re already stopping when the upper bound goes negative; this is the complementary guard for the lower bound.
+
 **Prompt v3** — 73 words, 4 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0155
 
 > Clamp = force a value back into a valid range. Here, the “lower” count (your bound[0]) can’t be negative, because you can’t have fewer than 0 unmatched “(”. After you update both bounds for a character, if the lower bound went below 0, set it back to 0 before moving on. What does a negative lower bound mean in your logic, and why should the minimum possible opens never be less than zero?
@@ -346,6 +406,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** 'Yes' in one sentence, then at most one orienting question. Doesn't say what to put on the stack. At most three sentences.
 
 **User:** can it be solved with a stack in O(n)?
+
+**Prompt v4** — 11 words, 1 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0022
+
+> Yes—using a stack you can compute the score in O(n) time.
 
 **Prompt v3** — 67 words, 4 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0079
 
@@ -362,6 +426,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Says yes, and what limits the current approach: three recursive branches at every '*', so many (open, i) states even with the cache. Doesn't lay out the two-bounds greedy method. No level or category label.
 
 **User:** Can it be faster? in terms of runtime complexity or no?
+
+**Prompt v4** — 28 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0078
+
+> Yes. Your memoized DFS has O(n^2) states (index i times possible open counts up to n), so the quadratic state space—not the per-state work—limits its runtime and space.
 
 **Prompt v3** — 75 words, 4 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0137
 
@@ -381,6 +449,10 @@ The latest reply to each case under each prompt version, newest version first. N
 **Expect:** Level 1, the key observation: each nesting depth has its own running score, and closing a bracket turns the inner score into 1 or double it and adds that to the depth outside. Not a critique of `stack = []`, not the full steps. At most three sentences.
 
 **User:** idk im stuck
+
+**Prompt v4** — 46 words, 3 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0057
+
+> This is a parentheses parsing/evaluation problem (like evaluating a simple grammar). Think of building or traversing a structure as you read left to right. When you encounter a closing ')', what tells you whether it should contribute a plain 1 or a doubled value from inside?
 
 **Prompt v3** — 28 words, 2 sentence(s) · gpt-5-2025-08-07 · effort default · $0.0084
 

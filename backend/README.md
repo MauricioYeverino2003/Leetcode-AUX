@@ -88,13 +88,24 @@ uv run python -m app.benchmarks report            # -> docs/benchmarks.md
 uv run python -m app.benchmarks run               # estimate only
 uv run python -m app.benchmarks run --yes         # replay benchmarks/cases.json
 uv run python -m app.benchmarks run --yes --repeat 3
+uv run python -m app.benchmarks run --yes --case help-empty-stub --case off-topic
 ```
 
 `run` replays the canned requests in `benchmarks/cases.json` directly against
 the configured provider — no HTTP, no auth — so two configurations can be
 compared on identical input: change `LLM_PROVIDER` / `LLM_EFFORT` / the model
-in `.env`, run again, regenerate the report. Rows are tagged `bench` vs
-`panel` so real usage and replays stay separate in the summary.
+in `.env`, or the prompt, run again, regenerate the report. Rows are tagged
+`bench` vs `panel` so real usage and replays stay separate in the summary.
+
+Each case is one frozen moment of a chat — problem, editor code, transcript so
+far — plus an `expect` line saying what a good reply does, and optionally a
+`prior` list standing in for the saved solutions recall would have found.
+Nothing grades a reply against `expect`; the report's **Replay cases** section
+prints it above the replies, one per prompt version, and the judging is done
+by reading. `PROMPT_VERSION` in `app/prompt.py` is bumped on every wording
+change and recorded with each call, which is what makes versions comparable.
+Most cases come from real chats that went wrong, so a later change can't
+quietly bring the failure back.
 
 Cost estimates come from `app/prices.py`, a hand-maintained table — check the
 date at the top of it against the vendor's pricing page before quoting a

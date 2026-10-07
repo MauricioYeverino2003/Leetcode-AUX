@@ -2,7 +2,7 @@
 
 A running log of architectural decisions and the reasoning behind them.
 
-_Last updated: 2026-10-03_
+_Last updated: 2026-10-06_
 
 ## How to read this
 
@@ -534,6 +534,76 @@ problem with Two Sum saved and see `recalled: 1. Two Sum`.
 
 ---
 
+## The hint ladder and intent rules: tuning the tutor by replay
+
+The tutor's rules are numbered hint levels and short imperative limits, and
+every change to them is judged by replaying a fixed set of cases and reading
+the replies against a written expectation. Four prompt versions in four days
+(2026-10-03 to 06); this entry records what each one was for.
+
+**Context.** The first prompt was short and vague — "escalate gradually",
+"a few sentences" — and the benchmark log of sixteen real chats showed what
+vague buys: praise openers in five replies ("Great place to start" to a user
+who typed "help" into an empty function), the whole strategy handed over on
+the first message ("think sort + two pointers"), the same hint repeated three
+times to "another one", replies of 90–140 words, and off-topic questions
+answered. Two days later a second failure: with code in the editor, a direct
+question about the user's own reasoning got "Level 4 hint: reconsider two
+spots…" — no answer, and the same two points for the third reply running.
+
+**Method.** `benchmarks/cases.json` holds frozen moments of a chat (problem,
+editor code, transcript, optionally recalled solutions) with an `expect` line
+each. Most are the failures above, turned into tests. A prompt change is
+replayed against every case, the report puts each case's replies side by side
+per prompt version, and the judging is by reading — no automatic grading and
+no LLM judge, chosen deliberately: rules can't catch "gave the whole approach
+in the form of a question", and a grader model adds cost and its own errors.
+`PROMPT_VERSION` is recorded with every call so versions stay comparable.
+Replays cost a few cents each; the whole exercise about fifty.
+
+**The shape of the prompt.** Two ideas, both kept as short as the cases
+allow:
+
+- *Five hint levels, one per reply*: the kind of problem plus one question;
+  the key observation; the technique; the steps in words; a specific line of
+  their code. "Another hint" is the next level; a bare starter signature
+  counts as nothing written; never repeat a point, say it more plainly.
+- *First decide what they are asking.* A hint, a yes/no question about an
+  approach, a question about their own reasoning or code, a question about
+  something the tutor said, "why does this fail", "can it be better", or
+  off-topic — each with a one-line rule. The direct-question rule is "say
+  whether it's right, then name the one flaw: what is wrong, not how to fix
+  it", which is the strength of answer Mauko chose.
+
+**What each version did.**
+
+| Version | Change | Result on the replay set |
+| --- | --- | --- |
+| 1 | the original | praise, length, whole approaches, repeats, off-topic answered |
+| 2 | numbered ladder, hard limits, no praise, off-topic rule | fixed all of those; but "with real code, work at level 4" made every message a hint request, and level labels leaked into replies |
+| 3 | intent rules | direct questions answered, "still not working" gets something new, scaffolding no longer critiqued; one regression: a bare yes/no question got the whole method as "the gap" |
+| 4 | yes/no split from reasoning questions; "can it be faster" stops at the limit; labels and lists banned | 13 of 17 clearly meet their expectation, three are borderline (judgment calls below), and one regressed: "still not working" asked the previous question again instead of stating what the code still lacks — one run, so noise is possible |
+
+Cost per reply barely moved between versions ($0.0075 → $0.0060 → $0.0064 on
+the same eleven cases); what moved it was the *kind* of question. Cases with
+real code and a hard question spend about 1,200 tokens reasoning and cost
+$0.014, more than double the simple ones, under every version.
+
+**Still open.** Whether "name the flaw" may extend to the fix in words (the
+version 4 reply names the flaw but describes it imprecisely; version 3 was
+precise but gave the fix). And whether the ladder should descend after a
+turn that was an answer rather than a hint — the case that tests it was
+built ambiguously.
+
+**When this stops being a prompt problem.** A cheap classifier call that
+labels each message, with a category-specific prompt and per-category effort,
+is the next design — but only if the replays show the single prompt routing
+wrong (a hint in answer to a question, or the reverse). After version 4 they
+don't. The cost finding above is the stronger argument for it, or simply for
+`LLM_EFFORT=low`, which the same replay set can now judge.
+
+---
+
 ## First working chat: `POST /chat`, verified by JWKS, deliberately unstreamed
 
 The first end-to-end milestone (2026-09-22): the panel sends the transcript
@@ -851,6 +921,9 @@ Decisions not yet made, and things deliberately postponed.
 | Persisting sessions and messages | Chat transcripts still live in panel state. Accepted solutions are saved (see above), which is the data "you solved this pattern last week" needs |
 | Using saved solutions in hints | Built 2026-10-03 by topic-tag overlap (see *Recall*). The NeetCode pattern map and `pgvector` remain the upgrade path |
 | Quota and rate limit | Per-user daily hint count from a usage log; in-memory bucket per user |
+| `LLM_EFFORT` tuning | Next. Reasoning is 80–90% of each reply's cost and most of the wait; replay the 17 cases at `low` and read whether the hints hold up |
+| Intent classifier before the main call | Deferred until the replays show the single prompt routing wrong (see *The hint ladder and intent rules*). Would also enable per-category effort |
+| Consent flow | Before anyone else gets an account: consent at sign-up, a one-time screen for existing accounts, a settings tab with revoke and delete, backend enforcement |
 
 **Scope guard.** The failure mode for this project is building forever and
 shipping nothing. V1 is: panel opens on a problem, reads the statement and code,
