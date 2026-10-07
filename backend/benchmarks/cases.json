@@ -236,5 +236,183 @@
         "code": "class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        "
       }
     }
+  },
+  {
+    "name": "question-about-own-logic",
+    "why": "From the 2026-10-05 chat: a direct question about their own reasoning got 'Level 4 hint: Reconsider two spots' — no answer, and the same two points for the third time.",
+    "expect": "Answers the question: yes, that model is right. Then names the gap in words: the number of open brackets can't be negative, so a negative lower bound isn't a real possibility. No code change, no 'reconsider this line', no level or category label.",
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "im stuck, why are my conditions iffy"
+        },
+        {
+          "role": "assistant",
+          "content": "Look at the final line: return True if (bound[0] <= 0 and bound[1] >= 0) else False. If the lower bound can be negative at the end, why would that mean the string is valid? And after you update bound for a character, where do you stop the lower bound from staying negative?"
+        },
+        {
+          "role": "user",
+          "content": "those two tips made sense but its still not working"
+        },
+        {
+          "role": "assistant",
+          "content": "Two spots: right after the updates in the loop, what should happen to the lower bound so it never stays negative? And on the final return, what exact value should bound[0] have?"
+        },
+        {
+          "role": "user",
+          "content": "Wait so my logic is that the bounds are the possible open parentheses, given the *, and if [lower, upper] contain 0 between them, then it should be true no?"
+        }
+      ],
+      "problem": {
+        "slug": "valid-parenthesis-string",
+        "title": "678. Valid Parenthesis String",
+        "difficulty": "Medium",
+        "statement": "Given a string s containing only '(', ')' and '*', return true if s is valid. Every '(' needs a matching ')' after it and every ')' a matching '(' before it; '*' can be treated as '(', ')' or an empty string."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def checkValidString(self, s: str) -> bool:\n        # [lower, upper] -> Upper and lower bound of possible open brackets. By the end is 0 in our possibilities?\n        bound = [0, 0]\n        for c in s:\n\n            if c == \"(\":\n                bound[0] += 1\n                bound[1] += 1\n            elif c == \")\":\n                bound[0] -= 1\n                bound[1] -= 1\n            else:\n                bound[0] -= 1\n                bound[1] += 1\n\n            if not bound[1] >= 0:\n               return False\n\n        return True if (bound[0] <= 0 and bound[1] >= 0) else False\n"
+      }
+    }
+  },
+  {
+    "name": "still-not-working",
+    "why": "From the same chat: after a hint posed as questions, 'still not working' got the same questions again. The code shows the hint was not applied.",
+    "expect": "States plainly which earlier point the code still doesn't do: nothing stops the lower bound from going negative. One or two sentences, not the same questions again, no code.",
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "im stuck, why are my conditions iffy"
+        },
+        {
+          "role": "assistant",
+          "content": "Look at the final line: return True if (bound[0] <= 0 and bound[1] >= 0) else False. If the lower bound can be negative at the end, why would that mean the string is valid? And after you update bound for a character, where do you stop the lower bound from staying negative?"
+        },
+        {
+          "role": "user",
+          "content": "those two tips made sense but its still not working"
+        }
+      ],
+      "problem": {
+        "slug": "valid-parenthesis-string",
+        "title": "678. Valid Parenthesis String",
+        "difficulty": "Medium",
+        "statement": "Given a string s containing only '(', ')' and '*', return true if s is valid. Every '(' needs a matching ')' after it and every ')' a matching '(' before it; '*' can be treated as '(', ')' or an empty string."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def checkValidString(self, s: str) -> bool:\n        # [lower, upper] -> Upper and lower bound of possible open brackets. By the end is 0 in our possibilities?\n        bound = [0, 0]\n        for c in s:\n\n            if c == \"(\":\n                bound[0] += 1\n                bound[1] += 1\n            elif c == \")\":\n                bound[0] -= 1\n                bound[1] -= 1\n            else:\n                bound[0] -= 1\n                bound[1] += 1\n\n            if not bound[1] >= 0:\n               return False\n\n        return True if (bound[0] <= 0 and bound[1] >= 0) else False\n"
+      }
+    }
+  },
+  {
+    "name": "clarify-tutor-statement",
+    "why": "A question about a word the tutor used. It should explain that word, not move on.",
+    "expect": "Explains 'clamp' plainly: never let the lower bound go below zero, because a count of open brackets can't be negative. No new hint and no second issue. At most three sentences.",
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "im stuck, why are my conditions iffy"
+        },
+        {
+          "role": "assistant",
+          "content": "After you update the bounds for a character, the lower bound can go below zero. Where do you clamp the lower bound so that doesn't carry forward?"
+        },
+        {
+          "role": "user",
+          "content": "what do you mean by clamp?"
+        }
+      ],
+      "problem": {
+        "slug": "valid-parenthesis-string",
+        "title": "678. Valid Parenthesis String",
+        "difficulty": "Medium",
+        "statement": "Given a string s containing only '(', ')' and '*', return true if s is valid. Every '(' needs a matching ')' after it and every ')' a matching '(' before it; '*' can be treated as '(', ')' or an empty string."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def checkValidString(self, s: str) -> bool:\n        # [lower, upper] -> Upper and lower bound of possible open brackets. By the end is 0 in our possibilities?\n        bound = [0, 0]\n        for c in s:\n\n            if c == \"(\":\n                bound[0] += 1\n                bound[1] += 1\n            elif c == \")\":\n                bound[0] -= 1\n                bound[1] -= 1\n            else:\n                bound[0] -= 1\n                bound[1] += 1\n\n            if not bound[1] >= 0:\n               return False\n\n        return True if (bound[0] <= 0 and bound[1] >= 0) else False\n"
+      }
+    }
+  },
+  {
+    "name": "approach-check-no-code",
+    "why": "A yes/no question about an approach before writing anything. Version 2 handled this well; kept so it stays that way.",
+    "expect": "'Yes' in one sentence, then at most one orienting question. Doesn't say what to put on the stack. At most three sentences.",
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "can it be solved with a stack in O(n)?"
+        }
+      ],
+      "problem": {
+        "slug": "score-of-parentheses",
+        "title": "856. Score of Parentheses",
+        "difficulty": "Medium",
+        "statement": "Given a balanced parentheses string s, return its score: '()' scores 1, AB scores A + B, and (A) scores 2 * A, where A and B are balanced parentheses strings."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def scoreOfParentheses(self, s: str) -> int:\n        "
+      }
+    }
+  },
+  {
+    "name": "can-it-be-faster",
+    "why": "Working code and a question about complexity. In the real chat the reply was labelled 'Level 4' and laid out the whole greedy method.",
+    "expect": "Says yes, and what limits the current approach: three recursive branches at every '*', so many (open, i) states even with the cache. Doesn't lay out the two-bounds greedy method. No level or category label.",
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "Can it be faster? in terms of runtime complexity or no?"
+        }
+      ],
+      "problem": {
+        "slug": "valid-parenthesis-string",
+        "title": "678. Valid Parenthesis String",
+        "difficulty": "Medium",
+        "statement": "Given a string s containing only '(', ')' and '*', return true if s is valid. Every '(' needs a matching ')' after it and every ')' a matching '(' before it; '*' can be treated as '(', ')' or an empty string."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def checkValidString(self, s: str) -> bool:\n\n        @cache\n        def dfs(open, i):\n            #IMPORTANT\n            if open < 0:\n                return False\n\n            if i == len(s):\n                return True if open == 0 else False\n\n            if s[i] == \"(\":\n                return dfs(open + 1, i+1)\n            elif s[i] == \")\":\n                return dfs(open - 1, i+1)\n            else:\n                if dfs(open - 1, i+1):\n                    return True\n                if dfs(open + 1, i+1):\n                    return True\n                if dfs(open, i+1):\n                    return True\n            return False\n\n        return dfs(0, 0)\n"
+      }
+    }
+  },
+  {
+    "name": "stuck-with-little-code",
+    "why": "From the real chat: 'idk im stuck' with one line written got a critique of `stack = []`. A line of scaffolding is not code to debug.",
+    "expect": "Level 1, the key observation: each nesting depth has its own running score, and closing a bracket turns the inner score into 1 or double it and adds that to the depth outside. Not a critique of `stack = []`, not the full steps. At most three sentences.",
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "can it be solved with a stack in O(n)?"
+        },
+        {
+          "role": "assistant",
+          "content": "Yes, a stack handles it in one pass. As you scan left to right, what is the least you need to remember at each depth to apply the three rules?"
+        },
+        {
+          "role": "user",
+          "content": "idk im stuck"
+        }
+      ],
+      "problem": {
+        "slug": "score-of-parentheses",
+        "title": "856. Score of Parentheses",
+        "difficulty": "Medium",
+        "statement": "Given a balanced parentheses string s, return its score: '()' scores 1, AB scores A + B, and (A) scores 2 * A, where A and B are balanced parentheses strings."
+      },
+      "code": {
+        "language": "python3",
+        "code": "class Solution:\n    def scoreOfParentheses(self, s: str) -> int:\n        stack = [] # Tracks open brackets?\n                   # On close bracket ->\n"
+      }
+    }
   }
 ]
