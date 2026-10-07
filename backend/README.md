@@ -35,6 +35,7 @@ tutor's behaviour, which lives in `app/prompt.py` and is shared by both.
 | `GET /me` | bearer | echoes the verified user — test auth without a Claude call |
 | `POST /chat` | bearer | transcript + problem + code in, the tutor's reply out — with the user's related saved solutions recalled into the prompt |
 | `POST /solutions` | bearer | an accepted submission in; stores the code and a short model-written summary, once per submission |
+| `GET /solutions/slugs` | bearer | the problems the user already has solutions for — the extension's import skips them |
 
 Interactive docs at `http://127.0.0.1:8000/docs`.
 
@@ -49,7 +50,16 @@ table from `supabase/migrations/` (`npm run db:migrate` at the repo root).
 A submission that is already saved is returned as-is with no model call. So is
 one whose code is identical to a solution already saved for the same problem
 — resubmitting the same code gets a new id from LeetCode but is not stored
-twice. Summaries always run at effort `low`, whatever `LLM_EFFORT` is.
+twice. Summaries always run at effort `low`, whatever `LLM_EFFORT` is, and on
+`SUMMARY_MODEL` if set (a smaller model of the same vendor; an import makes
+one summary per solved problem).
+
+Past accepted submissions arrive the same way: the extension's **Import**
+button has the content script page through the user's submission list on
+LeetCode (one request a second, latest accepted per problem, skipping the
+slugs from `GET /solutions/slugs`), fetch each one's code, and queue it
+exactly as a live accepted submission is queued. The backend sees ordinary
+`POST /solutions` calls and never touches LeetCode.
 
 ## Recall
 

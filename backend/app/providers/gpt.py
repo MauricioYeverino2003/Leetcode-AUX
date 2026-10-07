@@ -57,16 +57,20 @@ class OpenAIProvider:
         response = await self._create(instructions=instructions, input=input_items, effort=settings.llm_effort)
         return _to_chat_response(response, {"instructions": instructions, "input": input_items})
 
-    async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
-        response = await self._create(instructions=instructions, input=text, effort=effort)
+    async def complete(
+        self, *, instructions: str, text: str, effort: str | None = None, model: str | None = None
+    ) -> ChatResponse:
+        response = await self._create(instructions=instructions, input=text, effort=effort, model=model)
         return _to_chat_response(response, {"instructions": instructions, "input": text})
 
-    async def _create(self, *, instructions: str, input: str | list[dict], effort: str | None) -> Response:
+    async def _create(
+        self, *, instructions: str, input: str | list[dict], effort: str | None, model: str | None = None
+    ) -> Response:
         """The one place this provider calls the API, so every kind of request
         gets the same error mapping."""
         try:
             return await self._get_client().responses.create(
-                model=self.model,
+                model=model or self.model,
                 instructions=instructions,
                 input=input,
                 max_output_tokens=16000,

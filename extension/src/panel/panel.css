@@ -290,6 +290,16 @@ ul {
   color: var(--hard);
 }
 
+/* ---- import of past submissions ---------------------------------------- */
+
+.import {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
 /* The saved-solution status and its summary, as one unit in the strip. */
 .solution {
   display: flex;

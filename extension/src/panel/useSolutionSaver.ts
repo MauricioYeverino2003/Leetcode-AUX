@@ -4,10 +4,12 @@ import { BackendError, saveSolution } from "../lib/backend";
 import type { Capture } from "../lib/capture";
 import { ACCEPTED_PREFIX, SOLUTION_KEY, type AcceptedSubmission, type SavedSolution } from "../lib/submission";
 
+/** `remaining` counts the accepted submissions still queued, including the
+ *  one being saved — an import can queue dozens at once. */
 export type SaveState =
-  | { status: "idle" }
-  | { status: "saving"; slug: string }
-  | { status: "error"; slug: string; message: string };
+  | { status: "idle"; remaining: 0 }
+  | { status: "saving"; slug: string; remaining: number }
+  | { status: "error"; slug: string; message: string; remaining: number };
 
 /** A request the backend refused on its merits will be refused again, so that
  *  submission is dropped rather than retried every time the panel opens. */
@@ -27,7 +29,7 @@ function isPermanent(err: unknown): boolean {
  * panel opens or another submission arrives. There is no retry loop.
  */
 export function useSolutionSaver(capture: Capture | null): SaveState {
-  const [state, setState] = useState<SaveState>({ status: "idle" });
+  const [state, setState] = useState<SaveState>({ status: "idle", remaining: 0 });
 
   // The saver runs outside the render cycle, so it reads the current problem
   // through a ref rather than restarting whenever the capture changes.
@@ -40,8 +42,8 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
     let running = false;
     let again = false;
 
-    async function saveOne(key: string, accepted: AcceptedSubmission): Promise<void> {
-      setState({ status: "saving", slug: accepted.slug });
+    async function saveOne(key: string, accepted: AcceptedSubmission, remaining: number): Promise<void> {
+      setState({ status: "saving", slug: accepted.slug, remaining });
 
       // The statement makes for a better summary, and the panel has it when
       // the submission is for the problem currently open.
@@ -74,7 +76,7 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
         await chrome.storage.local.set({ [SOLUTION_KEY]: saved });
         await chrome.storage.local.remove(key);
 
-        setState({ status: "idle" });
+        setState(remaining > 1 ? { status: "saving", slug: accepted.slug, remaining: remaining - 1 } : { status: "idle", remaining: 0 });
       } catch (err) {
         if (isPermanent(err)) await chrome.storage.local.remove(key);
 
@@ -82,6 +84,7 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
           status: "error",
           slug: accepted.slug,
           message: err instanceof Error ? err.message : String(err),
+          remaining: remaining - 1,
         });
       }
     }
@@ -99,8 +102,9 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
         do {
           again = false;
           const all = await chrome.storage.local.get(null);
-          for (const [key, value] of Object.entries(all)) {
-            if (key.startsWith(ACCEPTED_PREFIX)) await saveOne(key, value as AcceptedSubmission);
+          const queued = Object.entries(all).filter(([key]) => key.startsWith(ACCEPTED_PREFIX));
+          for (const [i, [key, value]] of queued.entries()) {
+            await saveOne(key, value as AcceptedSubmission, queued.length - i);
           }
         } while (again);
       } finally {

@@ -29,8 +29,9 @@ export function Notice({ title = "Before you send your first message" }: { title
         account details.
       </p>
       <p>
-        When LeetCode accepts a submission, or you open one it accepted earlier, the accepted code is
-        also sent to OpenAI to write a short summary, and the code and summary are saved to your account.
+        When LeetCode accepts a submission, when you open one it accepted earlier, or when you import your
+        earlier accepted submissions, the accepted code is also sent to OpenAI to write a short summary, and
+        the code and summary are saved to your account.
       </p>
       <p>
         Under OpenAI&rsquo;s data-sharing program, OpenAI may use that content to train and improve its

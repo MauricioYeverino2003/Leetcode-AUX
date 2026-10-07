@@ -81,8 +81,8 @@ export type SolutionResponse = {
   cost_usd: number | null;
 };
 
-/** One authenticated POST to the backend. */
-async function post<T>(path: string, body: unknown): Promise<T> {
+/** One authenticated request to the backend. */
+async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
   if (!BACKEND_URL) {
     throw new Error("VITE_BACKEND_URL is not set — add it to extension/.env.local and rebuild.");
   }
@@ -101,12 +101,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${BACKEND_URL}${path}`, {
-      method: "POST",
+      method,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     throw new BackendError(0, `Can't reach the backend at ${BACKEND_URL}. Is it running?`);
@@ -131,14 +131,26 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function sendChat(request: ChatRequest): Promise<ChatResult> {
+export async function sendChat(chat: ChatRequest): Promise<ChatResult> {
   // Measured around the whole call so the token refresh inside post() counts
   // too — it is part of what the user waits for.
   const started = performance.now();
-  const body = await post<ChatResponse>("/chat", request);
+  const body = await request<ChatResponse>("POST", "/chat", chat);
   return { ...body, round_trip_ms: Math.round(performance.now() - started) };
 }
 
-export function saveSolution(request: SolutionRequest): Promise<SolutionResponse> {
-  return post<SolutionResponse>("/solutions", request);
+export function saveSolution(solution: SolutionRequest): Promise<SolutionResponse> {
+  return request<SolutionResponse>("POST", "/solutions", solution);
+}
+
+export type SavedSlugs = {
+  /** Problems the user already has solutions for; an import skips them. */
+  slugs: string[];
+  summary_model: string;
+  /** The backend's estimate for one summary; null if it has no price for the model. */
+  summary_cost_usd: number | null;
+};
+
+export function fetchSavedSlugs(): Promise<SavedSlugs> {
+  return request<SavedSlugs>("GET", "/solutions/slugs");
 }

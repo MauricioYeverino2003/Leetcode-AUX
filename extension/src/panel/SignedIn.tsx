@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { CAPTURE_KEY, type Capture } from "../lib/capture";
@@ -6,37 +6,10 @@ import { CODE_KEY, type CodeCapture } from "../lib/code";
 import { SOLUTION_KEY, type SavedSolution } from "../lib/submission";
 import { supabase } from "../lib/supabase";
 import { Chat } from "./Chat";
+import { ImportPanel } from "./ImportPanel";
 import { Notice } from "./Notice";
 import { type SaveState, useSolutionSaver } from "./useSolutionSaver";
-
-/** A value in chrome.storage.local, kept live: the content script writes
- *  whenever something changes on the page, and onChanged delivers it here. */
-function useStored<T>(key: string): T | null {
-  const [value, setValue] = useState<T | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    chrome.storage.local.get(key).then((result) => {
-      if (!cancelled) setValue((result[key] as T | undefined) ?? null);
-    });
-
-    const onChanged = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
-      if (area === "local" && changes[key]) {
-        setValue((changes[key].newValue as T | undefined) ?? null);
-      }
-    };
-
-    chrome.storage.onChanged.addListener(onChanged);
-
-    return () => {
-      cancelled = true;
-      chrome.storage.onChanged.removeListener(onChanged);
-    };
-  }, [key]);
-
-  return value;
-}
+import { useStored } from "./useStored";
 
 export function SignedIn({ session }: { session: Session }) {
   const capture = useStored<Capture>(CAPTURE_KEY);
@@ -92,6 +65,8 @@ export function SignedIn({ session }: { session: Session }) {
         <CodeLine code={code} problemSlug={capture?.slug ?? null} />
         <SolutionLine saver={saver} solution={solution} problemSlug={capture?.slug ?? null} />
       </section>
+
+      <ImportPanel saving={saver.remaining} />
 
       {showPrivacy ? (
         <section className="privacy">
@@ -149,7 +124,11 @@ function SolutionLine({
   problemSlug: string | null;
 }) {
   if (saver.status === "saving") {
-    return <p className="muted small">Accepted — saving your solution…</p>;
+    return (
+      <p className="muted small">
+        {saver.remaining > 1 ? `Saving ${saver.remaining} accepted solutions…` : "Accepted — saving your solution…"}
+      </p>
+    );
   }
 
   if (saver.status === "error") {

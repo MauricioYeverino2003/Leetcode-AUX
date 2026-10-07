@@ -140,6 +140,13 @@ async def list_solutions_for_problem(token: str, problem_slug: str, limit: int =
     return response.json()
 
 
+async def list_solution_slugs(token: str) -> list[str]:
+    """Every problem the caller has a solution for. An import asks for this
+    first so it can skip those problems before fetching any code."""
+    response = await _send("GET", token, params={"select": "problem_slug", "limit": "1000"})
+    return sorted({row["problem_slug"] for row in response.json()})
+
+
 async def insert_solution(token: str, row: dict) -> None:
     """Stores one solution as the caller. `user_id` is not sent: the table
     fills it in from the token. A submission that is already there is left

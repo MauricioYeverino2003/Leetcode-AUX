@@ -2,7 +2,7 @@
 
 A running log of architectural decisions and the reasoning behind them.
 
-_Last updated: 2026-10-06_
+_Last updated: 2026-10-07_
 
 ## How to read this
 
@@ -476,6 +476,80 @@ ignored — is still to do.
 **Update 2026-10-03.** Verified end to end: Two Sum and Add Two Numbers saved
 with summaries; resubmitting Two Sum unchanged was recognised as the same code
 and not stored again; a wrong answer (`statusCode` 11) saved nothing.
+
+---
+
+## Importing past accepted submissions: through the user's own tab, scan before spend
+
+An **Import** button in the panel saves the latest accepted solution for every
+problem the user has solved on LeetCode, so recall has a history to draw on
+rather than only what was solved after installing the extension. It runs in
+the content script, inside the user's logged-in LeetCode tab.
+
+**Context.** Six problems were saved after a week of use, against a LeetCode
+history many times larger. Recall with six rows has little to match against,
+and the next memory upgrade — embeddings — would have little to search.
+LeetCode has no official API.
+
+**How it reads the history.** LeetCode's own site lists a user's submissions
+through the same GraphQL endpoint the extension already uses:
+`submissionList(offset, limit)` — 20 per page, newest first, `hasNext`, each
+entry with id, status, language, timestamp and slug but no code — and the
+code comes from `submissionDetails(id)`, the query the live detection already
+runs. Confirmed by a spike on a live account (2026-10-07) and by
+`leetcode-sync`, which pulls whole histories this way at one request per
+second with exponential backoff; the import uses the same pacing. No HTML is
+scraped.
+
+**Why the content script and not the backend.** The only way a server could
+read a user's submissions is with that user's LeetCode session cookie, which
+is how `leetcode-sync` works: the user copies the cookie into a secret. A
+backend holding people's LeetCode logins is a liability this project will not
+take on. The content script already runs in the logged-in tab, the browser
+attaches the cookies itself, and nothing is copied anywhere. The cost is that
+the panel and a LeetCode tab must stay open while it runs — about a second
+per page of history plus a second per problem, so minutes, not hours.
+
+**Scan, then confirm.** The import is two phases on purpose. The scan pages
+through the whole list and fetches no code: it costs time only, and ends with
+"N problems to import, about $X". Only after the user confirms does the
+content script fetch code and queue it. Every queued submission then goes
+through the same `accepted:<id>` queue, the same `POST /solutions`, the same
+summary at low effort and the same duplicate checks as a live accepted
+submission — the import adds no second save path.
+
+**Latest accepted per problem, skipping what's saved.** The list is newest
+first, so the first accepted entry per slug is the latest. Before scanning,
+the panel fetches the user's saved slugs from the backend (`GET
+/solutions/slugs`) so those problems are dropped before any code is fetched.
+
+**A smaller model for summaries.** One summary per imported problem on the
+chat model (`gpt-5`) is about half a cent each — under a dollar for a
+177-problem history, but a day's free allowance. `SUMMARY_MODEL` lets the
+summaries run on a cheaper model of the same vendor (`gpt-5-mini`, roughly a
+fifth of the cost) while chat stays on the stronger one. The backend
+computes the per-summary estimate from its price table for whichever model
+is configured and sends it with the slugs, so the panel's "about $X" is
+honest rather than a constant.
+
+**What a page reload does.** It kills the content script mid-run. The import
+state carries a heartbeat; the panel treats one that has gone quiet for a
+minute as interrupted and offers Import again. Re-running is safe: the scan
+skips saved slugs, and the backend refuses duplicates by submission id and by
+identical code.
+
+**Cost.** One more dependence on an undocumented endpoint, and the first
+feature that makes many LeetCode requests in a row; the pacing is the
+mitigation, and a 429 or a changed schema shows up as a failed import with
+the error text, not a silent gap.
+
+**Status.** Built and run 2026-10-07: the whole history imported in one
+sitting — 171 problems summarised on `gpt-5-mini`, 178 rows across 177
+problems afterwards, all Python. Estimated cost about $0.17. One bug found on
+the first press: a `requested` state nobody answered (the LeetCode tab still
+had the old script) was ignored when re-requested and offered no way out;
+fixed by treating every `requested` write as a request and giving the waiting
+state Try again / Cancel.
 
 ---
 

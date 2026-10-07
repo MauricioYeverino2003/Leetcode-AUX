@@ -27,7 +27,14 @@ import {
   type CodeMessage,
   type CodeRequest,
 } from "./lib/code";
-import { ACCEPTED_PREFIX, type AcceptedSubmission } from "./lib/submission";
+import {
+  ACCEPTED_PREFIX,
+  IMPORT_KEY,
+  SAVED_SLUGS_KEY,
+  type AcceptedSubmission,
+  type ImportCandidate,
+  type ImportState,
+} from "./lib/submission";
 
 const LOG = "[LC-AUX]";
 
@@ -530,7 +537,7 @@ async function watchSubmission(id: string): Promise<void> {
       lastError = err instanceof Error ? err.message : String(err);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, SUBMISSION_POLL_MS));
+    await sleep(SUBMISSION_POLL_MS);
   }
 
   const waited = Math.round((SUBMISSION_POLL_TRIES * SUBMISSION_POLL_MS) / 1000);
@@ -555,6 +562,211 @@ function onSubmissionView(callback: (id: string) => void): void {
   check();
   onUrlChange(check);
 }
+
+// ---------------------------------------------------------------------------
+// Importing past accepted submissions
+//
+// LeetCode's own site lists a user's submissions through the same GraphQL
+// endpoint, 20 per page, newest first, without the code; the code comes from
+// submissionDetails, as for a live verdict. Both run here, in the logged-in
+// tab, so the browser attaches the user's own cookies and nothing is copied.
+// Validated by a spike on a live account (2026-10-07): the query as written,
+// statusDisplay "Accepted", numeric-string ids, Unix-second timestamps.
+//
+// Two phases, driven by the import state in chrome.storage (lib/submission.ts):
+// the panel sets `requested`, this scans every page and reports what it would
+// import; the panel shows that with a cost estimate and sets `importing`;
+// this fetches each submission's code into the same accepted:<id> queue the
+// live detection uses, and the panel saves them as usual. Requests to
+// LeetCode are spaced one second apart with backoff on failure — the pacing
+// leetcode-sync uses on whole histories.
+// ---------------------------------------------------------------------------
+
+const SUBMISSION_LIST_QUERY = `
+  query submissionList($offset: Int!, $limit: Int!) {
+    submissionList(offset: $offset, limit: $limit) {
+      hasNext
+      submissions {
+        id
+        statusDisplay
+        lang
+        timestamp
+        title
+        titleSlug
+      }
+    }
+  }
+`;
+
+type GraphQLSubmissionList = {
+  hasNext: boolean;
+  submissions: {
+    id: string;
+    statusDisplay: string;
+    lang: string;
+    timestamp: string;
+    title: string;
+    titleSlug: string;
+  }[];
+};
+
+async function viaSubmissionList(offset: number, limit: number): Promise<GraphQLSubmissionList> {
+  const data = await graphql<{ submissionList?: GraphQLSubmissionList | null }>(
+    "submissionList",
+    SUBMISSION_LIST_QUERY,
+    { offset, limit },
+  );
+  if (!data.submissionList) throw new Error("No submissionList in response");
+  return data.submissionList;
+}
+
+const IMPORT_PAGE_SIZE = 20;
+const IMPORT_PACE_MS = 1_000;
+const IMPORT_RETRIES = 5;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+let lastLeetCodeRequest = 0;
+
+/** Runs one LeetCode request no sooner than a second after the previous one,
+ *  retrying failures with exponential backoff (3s, 9s, 27s, …). A rejected
+ *  query is not retried: it would be rejected again. */
+async function paced<T>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    const wait = lastLeetCodeRequest + IMPORT_PACE_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastLeetCodeRequest = Date.now();
+
+    try {
+      return await call();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.startsWith("GraphQL errors") || attempt >= IMPORT_RETRIES) throw err;
+      const backoff = 3 ** attempt * 1000;
+      console.log(`${LOG} import: request failed (${message}) — retrying in ${backoff / 1000}s`);
+      await sleep(backoff);
+    }
+  }
+}
+
+/** ImportState minus the heartbeat, which setImport stamps. Written as a
+ *  conditional type so it distributes over the union: a plain Omit would
+ *  keep only the fields every variant shares. */
+type StoredImport = ImportState extends infer S ? (S extends ImportState ? Omit<S, "updatedAt"> : never) : never;
+
+function setImport(state: StoredImport): Promise<void> {
+  return chrome.storage.local.set({ [IMPORT_KEY]: { ...state, updatedAt: new Date().toISOString() } });
+}
+
+async function importStatus(): Promise<ImportState["status"] | undefined> {
+  const stored = await chrome.storage.local.get(IMPORT_KEY);
+  return (stored[IMPORT_KEY] as ImportState | undefined)?.status;
+}
+
+/** Every page of the user's submissions, kept down to the latest accepted
+ *  one per problem, minus the problems already saved. Fetches no code. */
+async function scanSubmissions(): Promise<void> {
+  // Another LeetCode tab may have picked the request up first.
+  if ((await importStatus()) !== "requested") return;
+
+  const stored = await chrome.storage.local.get(SAVED_SLUGS_KEY);
+  const saved = new Set<string>((stored[SAVED_SLUGS_KEY] as string[] | undefined) ?? []);
+
+  const seen = new Set<string>();
+  const problems: ImportCandidate[] = [];
+  let pages = 0;
+  let total = 0;
+  await setImport({ status: "scanning", pages, seen: total, found: 0 });
+
+  for (;;) {
+    if ((await importStatus()) === "cancelling") {
+      await setImport({ status: "cancelled", fetched: 0 });
+      return;
+    }
+
+    const page = await paced(() => viaSubmissionList(total, IMPORT_PAGE_SIZE));
+    pages += 1;
+    total += page.submissions.length;
+
+    // Newest first, so the first accepted entry for a slug is its latest.
+    for (const s of page.submissions) {
+      if (s.statusDisplay !== "Accepted" || seen.has(s.titleSlug)) continue;
+      seen.add(s.titleSlug);
+      if (saved.has(s.titleSlug)) continue;
+      problems.push({ submissionId: s.id, slug: s.titleSlug, title: s.title, language: s.lang || null });
+    }
+
+    await setImport({ status: "scanning", pages, seen: total, found: problems.length });
+    if (!page.hasNext || page.submissions.length === 0) break;
+  }
+
+  console.log(
+    `${LOG} import: scanned ${total} submission(s) on ${pages} page(s) — ` +
+      `${problems.length} problem(s) to import, ${saved.size} already saved`,
+  );
+  await setImport({ status: "scanned", pages, seen: total, problems });
+}
+
+/** Fetches each candidate's code and queues it exactly as a live accepted
+ *  submission is queued; the panel does the saving. */
+async function importSubmissions(problems: ImportCandidate[]): Promise<void> {
+  let fetched = 0;
+
+  for (const p of problems) {
+    if ((await importStatus()) === "cancelling") {
+      await setImport({ status: "cancelled", fetched });
+      return;
+    }
+    await setImport({ status: "importing", problems, total: problems.length, fetched, current: p.slug });
+
+    try {
+      const details = await paced(() => viaSubmissionDetails(p.submissionId));
+      if (details && details.statusCode === STATUS_ACCEPTED) {
+        await storeAccepted(p.submissionId, details);
+      } else {
+        console.log(`${LOG} import: ${p.slug} (${p.submissionId}) — not returned as accepted, skipped`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(`${LOG} import: ${p.slug} (${p.submissionId}) — gave up (${message}), skipped`);
+    }
+    fetched += 1;
+  }
+
+  await setImport({ status: "done", imported: fetched });
+}
+
+let importBusy = false;
+
+async function runImportStep(step: () => Promise<void>): Promise<void> {
+  if (importBusy) return;
+  importBusy = true;
+  try {
+    await step();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log(`${LOG} import: failed — ${message}`);
+    await setImport({ status: "failed", error: message });
+  } finally {
+    importBusy = false;
+  }
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes[IMPORT_KEY]) return;
+  const prev = changes[IMPORT_KEY].oldValue as ImportState | undefined;
+  const next = changes[IMPORT_KEY].newValue as ImportState | undefined;
+  if (!next) return;
+
+  // Every `requested` write is a request — including one that overwrites a
+  // stale `requested` nobody answered. `importing` only counts when the panel
+  // just confirmed a scan; this script's own progress writes keep that status
+  // and must not restart the run.
+  if (next.status === "requested") void runImportStep(scanSubmissions);
+  if (next.status === "importing" && prev?.status === "scanned") {
+    void runImportStep(() => importSubmissions(next.problems));
+  }
+});
 
 void extract();
 onProblemChange(() => {

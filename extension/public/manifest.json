@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LeetCode AUX",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "An AI practice partner that guides you through LeetCode problems instead of handing you the answer.",
   "minimum_chrome_version": "114",
   "permissions": ["storage", "sidePanel"],

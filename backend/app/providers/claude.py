@@ -68,19 +68,23 @@ class ClaudeProvider:
         response = await self._create(system=system, messages=messages, effort=settings.llm_effort)
         return _to_chat_response(response, {"system": system, "messages": messages})
 
-    async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
+    async def complete(
+        self, *, instructions: str, text: str, effort: str | None = None, model: str | None = None
+    ) -> ChatResponse:
         system = [{"type": "text", "text": instructions}]
         messages = [{"role": "user", "content": text}]
 
-        response = await self._create(system=system, messages=messages, effort=effort)
+        response = await self._create(system=system, messages=messages, effort=effort, model=model)
         return _to_chat_response(response, {"system": system, "messages": messages})
 
-    async def _create(self, *, system: list[dict], messages: list[dict], effort: str | None) -> BetaMessage:
+    async def _create(
+        self, *, system: list[dict], messages: list[dict], effort: str | None, model: str | None = None
+    ) -> BetaMessage:
         """The one place this provider calls the API, so every kind of request
         gets the same error mapping."""
         try:
             return await self._get_client().beta.messages.create(
-                model=self.model,
+                model=model or self.model,
                 max_tokens=16000,
                 # Claude Opus 5 has thinking on by default (adaptive). effort,
                 # when set, caps how much; omitted = the default.

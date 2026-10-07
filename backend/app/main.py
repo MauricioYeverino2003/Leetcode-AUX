@@ -19,6 +19,7 @@ from .schemas import (
     SolutionRequest,
     SolutionResponse,
     Timing,
+    Usage,
 )
 
 log = logging.getLogger("leetcode-aux")
@@ -29,6 +30,17 @@ app = FastAPI(title="LeetCode AUX backend", version="0.4.0")
 # Summaries are a small, bounded task, so they always run at the cheapest
 # effort. LLM_EFFORT is tuned for hint quality and does not apply to them.
 SUMMARY_EFFORT = "low"
+
+# A typical summary call, for the estimate the panel shows before an import:
+# instructions + problem + code in, a short reply plus low-effort reasoning
+# out. Rounded figures from the backend log; the panel only says "about".
+SUMMARY_TYPICAL_USAGE = Usage(
+    input_tokens=700, output_tokens=400, cache_read_input_tokens=0, cache_creation_input_tokens=0
+)
+
+
+def summary_model() -> str:
+    return settings.summary_model or get_provider().model
 
 # The side panel runs on chrome-extension://<id>/ — 32 letters a–p. In practice
 # Chrome skips CORS for hosts the extension holds host_permissions for, but
@@ -57,6 +69,7 @@ def health() -> dict:
         "provider": provider.name,
         "model": provider.model,
         "effort": settings.llm_effort or "default",
+        "summary_model": summary_model(),
     }
 
 
@@ -125,6 +138,28 @@ async def chat(
     return response
 
 
+@app.get("/solutions/slugs")
+async def saved_solution_slugs(
+    user: User = Depends(current_user),
+    token: str = Depends(user_token),
+) -> dict:
+    """Which problems the caller already has solutions for, so the
+    extension's import can skip them before fetching any code — plus what one
+    summary is likely to cost, so the panel can say what an import will."""
+    try:
+        slugs = await db.list_solution_slugs(token)
+    except db.DbError as e:
+        log.error("db: %s", e.log)
+        raise HTTPException(e.status, e.detail) from None
+
+    model = summary_model()
+    return {
+        "slugs": slugs,
+        "summary_model": model,
+        "summary_cost_usd": estimate_cost(model, SUMMARY_TYPICAL_USAGE),
+    }
+
+
 @app.post("/solutions")
 async def save_solution(
     request: SolutionRequest,
@@ -167,6 +202,7 @@ async def save_solution(
             instructions=SUMMARY_PROMPT,
             text=solution_block(request),
             effort=SUMMARY_EFFORT,
+            model=settings.summary_model,
         )
     except ProviderError as e:
         log.error("%s: %s", provider.name, e.log)

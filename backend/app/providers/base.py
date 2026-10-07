@@ -44,9 +44,12 @@ class Provider(Protocol):
         saved solutions; it goes into the prompt's stable part."""
         ...
 
-    async def complete(self, *, instructions: str, text: str, effort: str | None = None) -> ChatResponse:
+    async def complete(
+        self, *, instructions: str, text: str, effort: str | None = None, model: str | None = None
+    ) -> ChatResponse:
         """A one-off request outside the tutoring chat — its own instructions,
-        one piece of input, no transcript. `effort` is this call's own; the
+        one piece of input, no transcript. `effort` and `model` are this
+        call's own; unset, they fall back to the provider's defaults. The
         LLM_EFFORT setting is for chat and is not applied here."""
         ...
 

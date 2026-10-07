@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model: str = "gpt-5"
 
+    # The model that writes solution summaries, if different from the chat
+    # model (same vendor). Summaries are a small task and an import makes one
+    # per solved problem, so a cheaper model here cuts that cost several-fold.
+    # Unset = the chat model.
+    summary_model: str | None = None
+
     # Where to fetch the public keys that verify Supabase access tokens
     # (<url>/auth/v1/.well-known/jwks.json). Current Supabase — local CLI and
     # hosted — signs tokens asymmetrically (ES256), so this is the normal path.
