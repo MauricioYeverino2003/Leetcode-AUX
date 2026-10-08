@@ -33,6 +33,20 @@ PRICES: dict[str, Price] = {
     "gpt-5-mini": Price(input=0.25, output=2.00, cached_input=0.025, cache_write=0.0),
 }
 
+# Embedding models: input only, USD per 1M tokens.
+EMBEDDING_PRICES: dict[str, float] = {
+    "text-embedding-3-small": 0.02,
+    "text-embedding-3-large": 0.13,
+}
+
+
+def estimate_embedding_cost(model: str, tokens: int) -> float | None:
+    price = EMBEDDING_PRICES.get(model)
+    if price is None:
+        return None
+    return round(tokens * price / PER_MILLION, 6)
+
+
 def lookup(model: str) -> Price | None:
     """Exact match first, then the longest key the model id starts with — the
     API often reports a dated snapshot such as `gpt-5-2025-08-07`."""

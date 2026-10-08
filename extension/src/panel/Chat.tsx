@@ -142,11 +142,13 @@ function metaFrom(result: ChatResult): TurnMeta {
     reasoningTokens: result.usage.reasoning_tokens,
     cachedTokens: result.usage.cache_read_input_tokens,
     costUsd: result.cost_usd,
-    recalled: result.prior_solutions.map((s) => s.title ?? s.slug),
+    recalled: result.prior_solutions.map(
+      (s) => (s.title ?? s.slug) + (s.similarity !== null ? ` ${s.similarity.toFixed(2)}` : ""),
+    ),
   };
 }
 
-/** e.g. "gpt-5 · 2.1s model / 2.4s total · 3.2k in / 640 out (410 reasoning) · 2.9k cached · ~$0.021 · recalled: 1. Two Sum" */
+/** e.g. "gpt-5 · 2.1s model / 2.4s total · 3.2k in / 640 out (410 reasoning) · 2.9k cached · ~$0.021 · recalled: Two Sum 0.71" */
 function formatMeta(m: TurnMeta): string {
   const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
   const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));

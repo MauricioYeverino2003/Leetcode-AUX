@@ -5,6 +5,7 @@ The size limits are not cosmetic. Every byte a client sends here ends up in a
 prompt billed to the backend's key, so the schema is the first cost control.
 """
 
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -83,6 +84,9 @@ class PriorSolution(BaseModel):
     summary: str
     # True when it is the very problem they are working on now.
     same_problem: bool = False
+    # Cosine similarity to the current problem when recall was by meaning;
+    # None when it was by tags.
+    similarity: float | None = None
 
 
 class PriorRef(BaseModel):
@@ -90,6 +94,7 @@ class PriorRef(BaseModel):
 
     slug: str
     title: str | None = None
+    similarity: float | None = None
 
 
 class ChatResponse(BaseModel):
@@ -118,6 +123,8 @@ class SolutionRequest(BaseModel):
     topic_tags: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=30)
     language: str | None = Field(default=None, max_length=50)
     code: str = Field(min_length=1, max_length=50_000)
+    # When LeetCode accepted it. What "recent" means in recall.
+    submitted_at: datetime | None = None
 
 
 class SolutionResponse(BaseModel):

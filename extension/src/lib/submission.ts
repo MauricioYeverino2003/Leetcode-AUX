@@ -31,6 +31,10 @@ export type AcceptedSubmission = {
   language: string | null;
   /** The code LeetCode judged — not whatever is in the editor now. */
   code: string;
+  /** When LeetCode accepted it: the list's timestamp for an import, the
+   *  moment of detection for a live one. Optional only for entries queued
+   *  before this field existed. */
+  submittedAt?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -61,6 +65,8 @@ export type ImportCandidate = {
   slug: string;
   title: string;
   language: string | null;
+  /** Unix seconds, as LeetCode's list reports it. */
+  timestamp: string;
 };
 
 /**

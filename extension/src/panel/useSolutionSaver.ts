@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { BackendError, saveSolution } from "../lib/backend";
+import { BackendError, embedMissing, saveSolution } from "../lib/backend";
 import type { Capture } from "../lib/capture";
 import { ACCEPTED_PREFIX, SOLUTION_KEY, type AcceptedSubmission, type SavedSolution } from "../lib/submission";
 
@@ -64,6 +64,7 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
           topic_tags: accepted.topicTags,
           language: accepted.language,
           code: accepted.code,
+          submitted_at: accepted.submittedAt ?? accepted.detectedAt,
         });
 
         const saved: SavedSolution = {
@@ -89,6 +90,21 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
       }
     }
 
+    /** Indexes for recall whatever is saved but not yet embedded — the rows
+     *  an import just added, or everything the first time this runs. Silent
+     *  on failure: recall falls back to tags, and the next pass retries. */
+    async function indexMissing(): Promise<void> {
+      try {
+        for (let batches = 0; batches < 100; batches++) {
+          const { embedded, remaining } = await embedMissing();
+          if (embedded > 0) console.log(`[LC-AUX] indexed ${embedded} solutions for recall, ${remaining} to go`);
+          if (remaining === 0 || embedded === 0) return;
+        }
+      } catch (err) {
+        console.warn("[LC-AUX] indexing for recall failed", err);
+      }
+    }
+
     /** Saves everything waiting, one at a time. If another submission arrives
      *  meanwhile, goes round once more instead of starting a second pass. */
     async function drain(): Promise<void> {
@@ -107,6 +123,8 @@ export function useSolutionSaver(capture: Capture | null): SaveState {
             await saveOne(key, value as AcceptedSubmission, queued.length - i);
           }
         } while (again);
+
+        await indexMissing();
       } finally {
         running = false;
       }

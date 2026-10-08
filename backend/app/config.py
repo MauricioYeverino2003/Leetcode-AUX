@@ -66,5 +66,15 @@ class Settings(BaseSettings):
     # secret (HS256). Leave empty otherwise.
     supabase_jwt_secret: str | None = None
 
+    # The model behind recall by meaning (app/embeddings.py). OpenAI only —
+    # Anthropic has no embeddings API — so this needs OPENAI_API_KEY whatever
+    # LLM_PROVIDER is. Its vector size must equal EMBEDDING_DIMENSIONS below,
+    # which the solutions table is built for; a model of another size needs
+    # a migration too.
+    embedding_model: str = "text-embedding-3-large"
+
+
+# What `solutions.embedding` is declared as in the migration. text-embedding-3-large.
+EMBEDDING_DIMENSIONS = 3072
 
 settings = Settings()

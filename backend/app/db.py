@@ -37,7 +37,9 @@ def _get_client() -> httpx2.AsyncClient:
     return _client
 
 
-async def _send(method: str, token: str, *, prefer: str | None = None, **kwargs) -> httpx2.Response:
+async def _send(
+    method: str, token: str, *, path: str | None = None, prefer: str | None = None, **kwargs
+) -> httpx2.Response:
     if not settings.supabase_anon_key:
         raise DbError(503, "Saving is not configured: set SUPABASE_ANON_KEY in backend/.env")
 
@@ -46,7 +48,7 @@ async def _send(method: str, token: str, *, prefer: str | None = None, **kwargs)
         headers["Prefer"] = prefer
 
     try:
-        response = await _get_client().request(method, f"/{TABLE}", headers=headers, **kwargs)
+        response = await _get_client().request(method, path or f"/{TABLE}", headers=headers, **kwargs)
     except httpx2.HTTPError as e:
         raise DbError(502, "Could not reach the database", log=f"Supabase request failed: {e!r}") from None
 
@@ -138,6 +140,53 @@ async def list_solutions_for_problem(token: str, problem_slug: str, limit: int =
         },
     )
     return response.json()
+
+
+async def match_solutions(token: str, embedding: list[float], count: int) -> list[dict]:
+    """The caller's saved solutions nearest to `embedding`, nearest first,
+    each with a `similarity` in [0, 1]. Runs the match_solutions SQL
+    function from the migration; row-level security applies inside it."""
+    response = await _send(
+        "POST",
+        token,
+        path="/rpc/match_solutions",
+        json={"query_embedding": embedding, "match_count": count},
+    )
+    return response.json()
+
+
+EMBED_COLUMNS = "id,problem_number,problem_title,problem_slug,topic_tags,summary,statement"
+
+
+async def list_unembedded(token: str, limit: int) -> list[dict]:
+    """The caller's solutions with no embedding yet, oldest first."""
+    response = await _send(
+        "GET",
+        token,
+        params={"embedding": "is.null", "select": EMBED_COLUMNS, "order": "created_at.asc", "limit": str(limit)},
+    )
+    return response.json()
+
+
+async def count_unembedded(token: str) -> int:
+    response = await _send(
+        "GET",
+        token,
+        prefer="count=exact",
+        params={"embedding": "is.null", "select": "id", "limit": "1"},
+    )
+    # PostgREST answers "0-0/178": the total is after the slash.
+    return int(response.headers.get("content-range", "*/0").rsplit("/", 1)[-1])
+
+
+async def set_embedding(token: str, id: str, embedding: list[float], model: str) -> None:
+    await _send(
+        "PATCH",
+        token,
+        prefer="return=minimal",
+        params={"id": f"eq.{id}"},
+        json={"embedding": embedding, "embedding_model": model},
+    )
 
 
 async def list_solution_slugs(token: str) -> list[str]:

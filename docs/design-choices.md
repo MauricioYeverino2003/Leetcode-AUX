@@ -553,6 +553,84 @@ state Try again / Cancel.
 
 ---
 
+## Recall by meaning: embeddings in pgvector, tags as fallback
+
+Saved solutions are embedded; the problem in front of the user is embedded;
+the nearest by cosine similarity are what the tutor is shown. Tag overlap,
+the first version of recall, stays as the fallback and as a small bonus.
+
+**Context.** With 178 solutions imported, the first real test of tag recall
+showed its limit. For *301. Remove Invalid Parentheses* it offered Open the
+Lock, Island Perimeter and Network Delay Time — one shared tag each,
+`Breadth-First Search` — while seven solved parentheses problems sat unused,
+because LeetCode does not tag 301 as `Bracket Sequences`. Tags are technique
+labels, not what a problem is about, and one-tag ties were broken by import
+order, which runs newest-first and so inverts "recent". `pgvector` had been
+the designated upgrade since the first entry on similarity; the import gave
+it something to search.
+
+**What is embedded.** Per saved solution: number and title, tags, the
+summary, and the statement when the row has one (live saves; imports don't,
+yet). Per chat: the current problem's title, tags and statement. The titles
+carry topic ("Generate Parentheses"), the summaries carry technique ("DFS
+backtracking with two counters…"), and the model is asked to open future
+summaries with one sentence on what the problem asks, so new rows carry
+both. `text-embedding-3-large`, 3,072 dimensions — a few cents for the
+whole history, millionths of a dollar per chat.
+
+**Shape.** One `vector(3072)` column on `solutions`, no index: pgvector's
+index types stop at 2,000 dimensions, and a user's few hundred rows scan in
+milliseconds (a `halfvec` index is the escape hatch at tens of thousands). A
+`match_solutions` SQL function returns the nearest rows with their
+similarity; it is `security invoker`, so row-level security applies inside
+it and a caller only ever searches their own rows — the same no-elevated-
+credentials rule as every other database access. The backend calls it
+through PostgREST's RPC path with the user's token.
+
+**Ranking.** Similarity plus 0.05 per shared non-generic tag; the same
+problem always first; rows under `MIN_SIMILARITY` (0.4 to start) dropped;
+one per problem; top three. The panel prints each recalled problem's
+similarity next to its name, which is how the threshold gets tuned: by
+reading, like the prompt.
+
+**Indexing.** Rows are embedded in the same insert that saves them. Rows
+from before, or saved while embedding was failing, are picked up by
+`POST /solutions/embed`, fifty at a time, which the panel calls after every
+save pass until none remain — so the 178 existing rows are indexed the
+first time the panel opens, and an import's rows as soon as they're saved.
+`embedding_model` is stored per row so a model change can re-embed.
+
+**Recency.** `submitted_at` is stored from LeetCode's own timestamp (the
+list's for imports, detection time for live saves) and is what the tie-break
+uses, instead of when the row was written.
+
+**Fallback.** Anthropic has no embeddings API, so this needs an OpenAI key
+whatever `LLM_PROVIDER` is. Without one, or if the endpoint is down, recall
+logs the reason and runs the tag path; chat never waits on it. The log line
+says which ran: `recall=embedding|tags`.
+
+**Follow-ups, in order of evidence needed.** Fetch statements for the
+imported rows and re-embed, if bland-title problems miss. Then query-side
+HyDE: a cheap model writes two or three plausible approaches for the open
+problem, each is embedded, and a saved solution scores by its best match —
+answer-shaped text against answer-shaped text, cached per problem in a
+shared table since it describes the problem, not the user, and never shown
+to the user or the tutor.
+
+**Status.** Built and verified 2026-10-07. The migration applied cleanly; the
+first panel open indexed all 178 rows in four batches on
+`text-embedding-3-large` (about half a cent in all); and the 301 test
+passed — *Remove Invalid Parentheses* now recalls Valid Parenthesis String
+(0.69), Minimum Add to Make Parentheses Valid (0.66) and Valid Parentheses
+(0.61), where tags had recalled Open the Lock, Island Perimeter and Network
+Delay Time. The next day's *Longest Valid Parentheses* chat showed the next
+limit: the tutor named the recalled problems and said nothing about them —
+see `future-work.md` §1. And the parentheses family itself shows that topic
+similarity is not approach similarity (stack, greedy, DP, backtracking, BFS
+across six problems), which is the case for HyDE in `future-work.md` §2.
+
+---
+
 ## Recall: tag overlap, summaries only
 
 On every chat message, the backend looks up the user's saved solutions whose
@@ -605,6 +683,10 @@ upgrade path exists for.
 **Status.** Built 2026-10-03; verified offline (ranking, prompt block, the
 route with a fake database, graceful failure). Live check: open a Hash Table
 problem with Two Sum saved and see `recalled: 1. Two Sum`.
+
+**Update 2026-10-07.** Superseded as the primary signal by *Recall by
+meaning* after the 301 case above; kept as the fallback when embeddings are
+unavailable and as a bonus in the meaning-based score.
 
 ---
 
@@ -986,14 +1068,13 @@ Decisions not yet made, and things deliberately postponed.
 
 | Item | State |
 | --- | --- |
-| `pgvector` for similarity | Deferred. Pattern map first; upgrade when category matching proves too coarse |
 | Git repo | The root has none yet. Worth initialising before anything is pushed anywhere |
 | OAuth sign-in | Deferred. Needs `chrome.identity.launchWebAuthFlow` round-tripping through `chromiumapp.org` |
 | Email confirmation | Off locally. Turning it on in production needs a hosted page, since confirmation links open in a browser tab, not the extension |
 | Local host permissions | `http://127.0.0.1:54321/*` and `http://127.0.0.1:8000/*` are needed for dev and **must be replaced with the hosted URLs before shipping** |
 | Streaming replies | Next after the chat loop is proven end to end. SSE from FastAPI, `ReadableStream` in the panel |
 | Persisting sessions and messages | Chat transcripts still live in panel state. Accepted solutions are saved (see above), which is the data "you solved this pattern last week" needs |
-| Using saved solutions in hints | Built 2026-10-03 by topic-tag overlap (see *Recall*). The NeetCode pattern map and `pgvector` remain the upgrade path |
+| Using saved solutions in hints | Built 2026-10-03 by topic-tag overlap; since 2026-10-07 by embedding similarity with tags as fallback (see *Recall by meaning*). Next: statements for imported rows, then query-side HyDE |
 | Quota and rate limit | Per-user daily hint count from a usage log; in-memory bucket per user |
 | `LLM_EFFORT` tuning | Next. Reasoning is 80–90% of each reply's cost and most of the wait; replay the 17 cases at `low` and read whether the hints hold up |
 | Intent classifier before the main call | Deferred until the replays show the single prompt routing wrong (see *The hint ladder and intent rules*). Would also enable per-category effort |

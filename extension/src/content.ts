@@ -484,7 +484,7 @@ async function viaSubmissionDetails(id: string): Promise<GraphQLSubmission | nul
   return data.submissionDetails ?? null;
 }
 
-async function storeAccepted(id: string, submission: GraphQLSubmission): Promise<void> {
+async function storeAccepted(id: string, submission: GraphQLSubmission, submittedAt: string): Promise<void> {
   const q = submission.question;
   const slug = q?.titleSlug ?? getSlug();
 
@@ -496,6 +496,7 @@ async function storeAccepted(id: string, submission: GraphQLSubmission): Promise
   const accepted: AcceptedSubmission = {
     submissionId: id,
     detectedAt: new Date().toISOString(),
+    submittedAt,
     slug,
     title: q?.title ?? null,
     number: q?.questionFrontendId ?? null,
@@ -527,7 +528,7 @@ async function watchSubmission(id: string): Promise<void> {
 
       if (submission && status !== null && status !== STATUS_JUDGING) {
         if (status === STATUS_ACCEPTED) {
-          await storeAccepted(id, submission);
+          await storeAccepted(id, submission, new Date().toISOString());
         } else {
           console.log(`${LOG} submission ${id}: not accepted (statusCode ${status})`);
         }
@@ -693,7 +694,13 @@ async function scanSubmissions(): Promise<void> {
       if (s.statusDisplay !== "Accepted" || seen.has(s.titleSlug)) continue;
       seen.add(s.titleSlug);
       if (saved.has(s.titleSlug)) continue;
-      problems.push({ submissionId: s.id, slug: s.titleSlug, title: s.title, language: s.lang || null });
+      problems.push({
+        submissionId: s.id,
+        slug: s.titleSlug,
+        title: s.title,
+        language: s.lang || null,
+        timestamp: s.timestamp,
+      });
     }
 
     await setImport({ status: "scanning", pages, seen: total, found: problems.length });
@@ -722,7 +729,7 @@ async function importSubmissions(problems: ImportCandidate[]): Promise<void> {
     try {
       const details = await paced(() => viaSubmissionDetails(p.submissionId));
       if (details && details.statusCode === STATUS_ACCEPTED) {
-        await storeAccepted(p.submissionId, details);
+        await storeAccepted(p.submissionId, details, new Date(Number(p.timestamp) * 1000).toISOString());
       } else {
         console.log(`${LOG} import: ${p.slug} (${p.submissionId}) — not returned as accepted, skipped`);
       }

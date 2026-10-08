@@ -4,7 +4,7 @@ from time import perf_counter
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import benchmarks, db, recall
+from . import benchmarks, db, embeddings, recall
 from .auth import User, current_user, user_token
 from .config import settings
 from .prices import estimate_cost
@@ -80,16 +80,17 @@ def me(user: User = Depends(current_user)) -> User:
     return user
 
 
-async def _recall(token: str, request: ChatRequest) -> list[PriorSolution]:
+async def _recall(token: str, request: ChatRequest) -> tuple[list[PriorSolution], str]:
     """Recall must never take the chat down with it: a database problem is
-    logged and the tutor simply goes without."""
+    logged and the tutor simply goes without. Returns the solutions and
+    which way found them ("embedding", "tags", or "none")."""
     if request.problem is None:
-        return []
+        return [], "none"
     try:
         return await recall.recall(token, request.problem)
     except db.DbError as e:
         log.warning("recall skipped: %s", e.log)
-        return []
+        return [], "none"
 
 
 @app.post("/chat")
@@ -100,7 +101,7 @@ async def chat(
     token: str = Depends(user_token),
 ) -> ChatResponse:
     provider = get_provider()
-    prior = await _recall(token, request)
+    prior, recall_mode = await _recall(token, request)
 
     model_started = perf_counter()
     try:
@@ -115,7 +116,7 @@ async def chat(
         backend_ms=round((finished - http.state.arrived) * 1000),
     )
     response.cost_usd = estimate_cost(response.model, response.usage)
-    response.prior_solutions = [PriorRef(slug=s.slug, title=s.title) for s in prior]
+    response.prior_solutions = [PriorRef(slug=s.slug, title=s.title, similarity=s.similarity) for s in prior]
 
     benchmarks.record(
         source="panel",
@@ -127,9 +128,9 @@ async def chat(
 
     u, t = response.usage, response.timing
     log.info(
-        "chat user=%s provider=%s model=%s effort=%s recalled=%d in=%d out=%d reasoning=%d "
+        "chat user=%s provider=%s model=%s effort=%s recall=%s recalled=%d in=%d out=%d reasoning=%d "
         "cache_read=%d cache_write=%d model_ms=%d backend_ms=%d cost=%s",
-        user.id, provider.name, response.model, settings.llm_effort or "default", len(prior),
+        user.id, provider.name, response.model, settings.llm_effort or "default", recall_mode, len(prior),
         u.input_tokens, u.output_tokens, u.reasoning_tokens,
         u.cache_read_input_tokens, u.cache_creation_input_tokens,
         t.model_ms, t.backend_ms,
@@ -158,6 +159,37 @@ async def saved_solution_slugs(
         "summary_model": model,
         "summary_cost_usd": estimate_cost(model, SUMMARY_TYPICAL_USAGE),
     }
+
+
+# How many of a user's unindexed solutions one call to /solutions/embed
+# handles. The panel keeps calling until none remain.
+EMBED_BATCH = 50
+
+
+@app.post("/solutions/embed")
+async def embed_missing(
+    user: User = Depends(current_user),
+    token: str = Depends(user_token),
+) -> dict:
+    """Embeds up to EMBED_BATCH of the caller's saved solutions that have no
+    embedding yet — the rows an import just added, or everything the first
+    time. Returns how many it did and how many are left."""
+    try:
+        rows = await db.list_unembedded(token, EMBED_BATCH)
+        if rows:
+            vectors = await embeddings.embed([embeddings.solution_text(row) for row in rows])
+            for row, vector in zip(rows, vectors):
+                await db.set_embedding(token, row["id"], vector, settings.embedding_model)
+        remaining = await db.count_unembedded(token)
+    except db.DbError as e:
+        log.error("db: %s", e.log)
+        raise HTTPException(e.status, e.detail) from None
+    except embeddings.EmbeddingError as e:
+        log.error("embeddings: %s", e.log)
+        raise HTTPException(e.status, e.detail) from None
+
+    log.info("embed user=%s embedded=%d remaining=%d", user.id, len(rows), remaining)
+    return {"embedded": len(rows), "remaining": remaining}
 
 
 @app.post("/solutions")
@@ -215,22 +247,32 @@ async def save_solution(
         log.error("%s: no usable summary for submission %d", provider.name, request.submission_id)
         raise HTTPException(502, "The model returned no summary")
 
+    row = {
+        "submission_id": request.submission_id,
+        "problem_slug": request.problem.slug,
+        "problem_title": request.problem.title,
+        "problem_number": request.problem_number,
+        "difficulty": request.problem.difficulty,
+        "topic_tags": request.topic_tags,
+        "language": request.language,
+        "code": request.code,
+        "summary": summary,
+        "summary_model": response.model,
+        "statement": request.problem.statement,
+        "submitted_at": request.submitted_at.isoformat() if request.submitted_at else None,
+    }
+
+    # Indexed for recall in the same insert when possible. If embedding fails
+    # the row is still saved; /solutions/embed picks it up later.
     try:
-        await db.insert_solution(
-            token,
-            {
-                "submission_id": request.submission_id,
-                "problem_slug": request.problem.slug,
-                "problem_title": request.problem.title,
-                "problem_number": request.problem_number,
-                "difficulty": request.problem.difficulty,
-                "topic_tags": request.topic_tags,
-                "language": request.language,
-                "code": request.code,
-                "summary": summary,
-                "summary_model": response.model,
-            },
-        )
+        [vector] = await embeddings.embed([embeddings.solution_text(row)])
+        row["embedding"] = vector
+        row["embedding_model"] = settings.embedding_model
+    except embeddings.EmbeddingError as e:
+        log.warning("solution saved without embedding: %s", e.log)
+
+    try:
+        await db.insert_solution(token, row)
     except db.DbError as e:
         log.error("db: %s", e.log)
         raise HTTPException(e.status, e.detail) from None

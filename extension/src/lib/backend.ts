@@ -44,8 +44,9 @@ export type ChatResponse = {
   };
   /** Estimated; null when the backend has no price for the model. */
   cost_usd: number | null;
-  /** The user's saved solutions the tutor was shown for this reply. */
-  prior_solutions: { slug: string; title: string | null }[];
+  /** The user's saved solutions the tutor was shown for this reply, with
+   *  the cosine similarity when recall was by meaning (null when by tags). */
+  prior_solutions: { slug: string; title: string | null; similarity: number | null }[];
 };
 
 /** What the panel gets back: the response plus its own measurement of the
@@ -70,6 +71,8 @@ export type SolutionRequest = {
   topic_tags: string[];
   language: string | null;
   code: string;
+  /** When LeetCode accepted it, ISO 8601. */
+  submitted_at: string | null;
 };
 
 export type SolutionResponse = {
@@ -153,4 +156,10 @@ export type SavedSlugs = {
 
 export function fetchSavedSlugs(): Promise<SavedSlugs> {
   return request<SavedSlugs>("GET", "/solutions/slugs");
+}
+
+/** Indexes a batch of the user's saved solutions that aren't yet searchable
+ *  by meaning. Call until `remaining` is 0. */
+export function embedMissing(): Promise<{ embedded: number; remaining: number }> {
+  return request<{ embedded: number; remaining: number }>("POST", "/solutions/embed");
 }

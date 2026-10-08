@@ -36,6 +36,7 @@ tutor's behaviour, which lives in `app/prompt.py` and is shared by both.
 | `POST /chat` | bearer | transcript + problem + code in, the tutor's reply out — with the user's related saved solutions recalled into the prompt |
 | `POST /solutions` | bearer | an accepted submission in; stores the code and a short model-written summary, once per submission |
 | `GET /solutions/slugs` | bearer | the problems the user already has solutions for — the extension's import skips them |
+| `POST /solutions/embed` | bearer | indexes up to 50 of the user's solutions that have no embedding yet; the panel calls it until none remain |
 
 Interactive docs at `http://127.0.0.1:8000/docs`.
 
@@ -63,12 +64,25 @@ exactly as a live accepted submission is queued. The backend sees ordinary
 
 ## Recall
 
-On every `/chat`, the backend looks for the user's saved solutions whose
-LeetCode topic tags overlap the current problem's (`app/recall.py`), ignoring
-tags that nearly every problem carries, and puts up to three of their
-summaries — never their code — after the problem statement in the prompt. The
-response lists them in `prior_solutions`, and the panel shows them under the
-reply. If the lookup fails, the chat goes ahead without it.
+On every `/chat`, the backend finds the user's saved solutions most similar
+to the current problem and puts up to three of their summaries — never their
+code — after the problem statement in the prompt (`app/recall.py`).
+
+Similarity is by meaning: every saved solution is embedded (title, tags,
+summary, and the statement when the row has one) with `EMBEDDING_MODEL` into
+a `pgvector` column, the current problem is embedded the same way, and the
+`match_solutions` SQL function returns the nearest rows by cosine similarity
+— inside row-level security, so only the caller's rows are searched. Shared
+topic tags add a small bonus; rows below a minimum similarity are dropped;
+the same problem, if solved before, always comes first. If embeddings are
+unavailable (no OpenAI key, endpoint down), recall falls back to topic-tag
+overlap; the log line says which (`recall=embedding|tags`).
+
+Rows are embedded when saved. Rows saved before this existed, or saved while
+embedding was failing, are indexed by `POST /solutions/embed`, which the
+panel calls after each save pass until nothing remains. The response lists
+the recalled problems in `prior_solutions` with their similarity, and the
+panel shows them under the reply.
 
 ## Try it by hand
 

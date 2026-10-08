@@ -127,9 +127,10 @@ def code_block(request: ChatRequest) -> str | None:
 
 SUMMARY_PROMPT = """\
 You are writing a note for someone's own record of a LeetCode problem they \
-just solved. Summarise the accepted solution below in two to four plain \
-sentences: the approach or pattern it uses, the key data structures, and its \
-time and space complexity.
+just solved. Open with one sentence saying what the problem asks. Then \
+summarise the accepted solution below in two to four plain sentences: the \
+approach or pattern it uses, the key data structures, and its time and space \
+complexity.
 
 Describe what this code actually does, not what an ideal solution would do. \
 No code, no headers, no bullet lists.
