@@ -4,7 +4,14 @@ Recall evaluation: how often does recall find what it should?
     uv run python -m app.recall_eval fetch         # LeetCode's data on every solved problem -> benchmarks/problems.json
     uv run python -m app.recall_eval label --yes   # a pattern + technique per saved solution -> benchmarks/techniques.json
     uv run python -m app.recall_eval check         # 20 pairs for a hand check               -> benchmarks/recall-handcheck.json
-    uv run python -m app.recall_eval run           # score both methods                       -> docs/recall-eval.md
+    uv run python -m app.recall_eval hyde --yes    # three written approaches per problem     -> benchmarks/problems-hyde.json
+    uv run python -m app.recall_eval run           # score every method                       -> docs/recall-eval.md
+
+HyDE (hypothetical document embeddings) is the experiment on the query side:
+instead of embedding the problem statement — which says what is asked, not
+how it is solved — a cheap model writes what the solution summaries for this
+problem would look like, and those are embedded. Scored beside the plain
+statement query; ships to production only if the same-technique number moves.
 
 "Should" is defined three ways, and all are scored:
 
@@ -58,6 +65,7 @@ PROBLEMS_FILE = BENCH / "problems.json"  # gitignored: LeetCode's text
 QUERY_EMBEDDINGS_FILE = BENCH / "problems-embeddings.json"  # gitignored: large
 TECHNIQUES_FILE = BENCH / "techniques.json"  # committed: slug -> {pattern, technique}
 HANDCHECK_FILE = BENCH / "recall-handcheck.json"  # committed once filled in
+HYDE_FILE = BENCH / "problems-hyde.json"  # gitignored: model text about LeetCode problems, large
 REPORT_FILE = BACKEND_DIR.parent / "docs" / "recall-eval.md"
 
 LEETCODE_GRAPHQL = "https://leetcode.com/graphql"
@@ -362,6 +370,84 @@ def _print_distribution(techniques: dict) -> None:
           + ", ".join(f"{k} {n}" for k, n in sorted(fine.items(), key=lambda x: -x[1])[:8]))
 
 
+# --- hyde: approach-shaped queries ---------------------------------------------
+
+HYDE_APPROACHES = 3
+
+HYDE_PROMPT = (
+    "Given this LeetCode problem, write the two or three most plausible efficient approaches a strong "
+    "candidate would consider. Write each as its own paragraph of two to four plain sentences in the "
+    "style of a solution summary: the approach or pattern, the key data structures, and the time and "
+    "space complexity. Don't pick one or compare them. Separate the paragraphs with a blank line. "
+    "No headers, no numbering, no code."
+)
+
+
+def split_approaches(reply: str, limit: int = HYDE_APPROACHES) -> list[str]:
+    """The model's reply as separate approach texts. Paragraphs first; if it
+    came back as one block with numbering or bullets, split on those."""
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", reply.strip()) if b.strip()]
+    if len(blocks) < 2:
+        blocks = [b.strip() for b in re.split(r"(?m)^\s*(?:\d+[.)]|[-*•])\s+", reply.strip()) if b.strip()]
+    cleaned = [re.sub(r"^\s*(?:\d+[.)]|[-*•]|approach\s*\d*\s*[:.-])\s*", "", b, flags=re.I).strip() for b in blocks]
+    return [c for c in cleaned if c][:limit]
+
+
+async def hyde(token: str | None, yes: bool) -> None:
+    from .providers import get_provider
+
+    problems = _load(PROBLEMS_FILE, {})
+    if not problems:
+        sys.exit("Run `fetch` first.")
+    token = await sign_in(token)
+    solved = {r["problem_slug"] for r in await db.list_solutions(token)}
+    usable = sorted(s for s in solved if problems.get(s, {}).get("statement"))
+
+    cache = _load(HYDE_FILE, {})
+    todo = [s for s in usable if s not in cache]
+    provider = get_provider()
+    model = settings.summary_model or provider.model
+    print(f"{len(usable)} usable problems, {len(cache)} done, {len(todo)} to write approaches for on {model} "
+          f"— rough estimate ${len(todo) * 0.0015:.2f} plus about a cent of embeddings")
+    if not yes:
+        print("Dry run. Re-run with --yes to spend it.")
+        return
+
+    for i, slug in enumerate(todo, 1):
+        response = await provider.complete(
+            instructions=HYDE_PROMPT,
+            text=embeddings.problem_text(_context(slug, problems)),
+            effort="low",
+            model=settings.summary_model,
+        )
+        approaches = split_approaches(response.reply)
+        if not approaches:
+            print(f"  [{i}/{len(todo)}] {slug}: no usable approaches in reply — skipped")
+            continue
+        vectors = await embeddings.embed(approaches)
+        cache[slug] = {
+            "model": response.model,
+            "approaches": approaches,
+            "vectors": [[round(x, 6) for x in v] for v in vectors],
+        }
+        _save(HYDE_FILE, cache)
+        print(f"  [{i}/{len(todo)}] {slug}: {len(approaches)} approach(es) — {approaches[0][:70]}…")
+
+    print(f"{len(cache)} problems -> {HYDE_FILE}")
+
+
+def merge_candidates(lists: list[list[dict]]) -> list[dict]:
+    """Rows from several match_solutions calls, one per query vector, merged
+    by row id with each row's similarity = its best across the vectors."""
+    best: dict[str, dict] = {}
+    for rows in lists:
+        for row in rows:
+            key = row.get("id") or row["problem_slug"]
+            if key not in best or float(row.get("similarity") or 0) > float(best[key].get("similarity") or 0):
+                best[key] = row
+    return sorted(best.values(), key=lambda r: -float(r.get("similarity") or 0))
+
+
 # --- relevance sets ------------------------------------------------------------
 
 
@@ -512,9 +598,26 @@ async def run(token: str | None) -> None:
             query_vectors[slug] = [round(x, 6) for x in vector]
         _save(QUERY_EMBEDDINGS_FILE, query_vectors)
 
+    # HyDE variants are scored only when every query has cached approaches,
+    # so every method is measured on the same queries.
+    hyde_cache = _load(HYDE_FILE, {})
+    missing_hyde = [s for s in queries if s not in hyde_cache]
+    use_hyde = bool(hyde_cache) and not missing_hyde
+    if hyde_cache and missing_hyde:
+        print(f"HyDE cache lacks {len(missing_hyde)} of {len(queries)} queries — run `hyde --yes`; skipping HyDE methods")
+
     # method -> slug -> ranked slugs (top 5)
-    results: dict[str, dict[str, list[str]]] = {"tags": {}, "embeddings": {}, "embeddings, no floor": {}}
-    detail: dict[str, dict] = {}
+    methods = ["tags", "embeddings", "embeddings, no floor"] + (["hyde", "hyde + statement"] if use_hyde else [])
+    results: dict[str, dict[str, list[str]]] = {m: {} for m in methods}
+    # method -> slug -> {candidate slug: similarity}, for the misses table
+    detail: dict[str, dict[str, dict]] = {m: {} for m in methods}
+
+    def top5(rows: list[dict], problem: ProblemContext, floor: float = recall.MIN_SIMILARITY) -> list[str]:
+        return [p.slug for p in recall.rank_by_meaning(rows, problem, limit=5, min_similarity=floor)]
+
+    def sims(rows: list[dict]) -> dict[str, float]:
+        return {r["problem_slug"]: round(float(r["similarity"]), 2) for r in rows[:8]}
+
     for n, slug in enumerate(queries, 1):
         problem = _context(slug, problems)
         own = lambda rs: [r for r in rs if r["problem_slug"] != slug]  # noqa: E731
@@ -523,11 +626,19 @@ async def run(token: str | None) -> None:
         results["tags"][slug] = [p.slug for p in recall.rank_by_tags(tag_rows, problem, limit=5)]
 
         near = own(await db.match_solutions(token, query_vectors[slug], recall.CANDIDATES))
-        results["embeddings"][slug] = [p.slug for p in recall.rank_by_meaning(near, problem, limit=5)]
-        results["embeddings, no floor"][slug] = [
-            p.slug for p in recall.rank_by_meaning(near, problem, limit=5, min_similarity=0.0)
-        ]
-        detail[slug] = {"similarities": {r["problem_slug"]: round(float(r["similarity"]), 2) for r in near[:5]}}
+        results["embeddings"][slug] = top5(near, problem)
+        results["embeddings, no floor"][slug] = top5(near, problem, floor=0.0)
+        detail["embeddings"][slug] = sims(near)
+
+        if use_hyde:
+            nears = [own(await db.match_solutions(token, v, recall.CANDIDATES)) for v in hyde_cache[slug]["vectors"]]
+            by_approach = merge_candidates(nears)
+            with_statement = merge_candidates(nears + [near])
+            results["hyde"][slug] = top5(by_approach, problem)
+            results["hyde + statement"][slug] = top5(with_statement, problem)
+            detail["hyde"][slug] = sims(by_approach)
+            detail["hyde + statement"][slug] = sims(with_statement)
+
         if n % 25 == 0:
             print(f"  {n}/{len(queries)} queries scored")
 
@@ -572,6 +683,12 @@ def build_report(problems, techniques, tiers, results, detail, solved, n_rows) -
     out.append("- **same technique**: the saved solutions share a specific technique (one of "
                f"{len(TAXONOMY)}, `app/recall_eval.py`). This is \"solved similarly\".")
     out.append("")
+    if "hyde" in results:
+        out.append(f"Methods: **tags** (topic-tag overlap); **embeddings** (the problem's statement embedded, "
+                   f"today's production recall); **hyde** ({HYDE_APPROACHES} plausible approaches written by the "
+                   "summary model and embedded, a row scoring by its best match against any of them); "
+                   "**hyde + statement** (best match against the statement or any approach).")
+        out.append("")
 
     handcheck = _load(HANDCHECK_FILE, [])
     judged = [e for e in handcheck if e.get("human") in ("yes", "no")]
@@ -613,17 +730,37 @@ def build_report(problems, techniques, tiers, results, detail, solved, n_rows) -
 
     tier_name = "same technique" if techniques else "LeetCode similar"
     relevant = tiers[tier_name]
-    misses = [s for s in results["embeddings"] if relevant.get(s) and not hit_at(results["embeddings"][s], relevant[s], 3)]
-    out.append(f"## Misses at k = 3 — embeddings, {tier_name} tier ({len(misses)})")
+    scored = [s for s in results["tags"] if relevant.get(s)]
+
+    # Which method does best on this tier, and what each one fixes or breaks
+    # relative to today's production method.
+    def hit3(method: str, s: str) -> bool:
+        return bool(hit_at(results[method][s], relevant[s], 3))
+
+    best = max(results, key=lambda m: sum(hit3(m, s) for s in scored)) if scored else "embeddings"
+    if "hyde" in results and scored:
+        out.append(f"**Against `embeddings` on the {tier_name} tier (hit@3):**")
+        out.append("")
+        for method in results:
+            if method == "embeddings":
+                continue
+            fixes = sum(1 for s in scored if hit3(method, s) and not hit3("embeddings", s))
+            breaks = sum(1 for s in scored if hit3("embeddings", s) and not hit3(method, s))
+            out.append(f"- `{method}`: fixes {fixes}, breaks {breaks}")
+        out.append("")
+
+    shown = best if best in detail and detail[best] else "embeddings"
+    misses = [s for s in scored if not hit3(shown, s)]
+    out.append(f"## Misses at k = 3 — {shown}, {tier_name} tier ({len(misses)})")
     out.append("")
-    out.append("| Query | Pattern / technique | Expected (up to 3) | Embeddings top 3 (similarity) | Tags top 3 |")
+    out.append(f"| Query | Pattern / technique | Expected (up to 3) | {shown} top 3 (similarity) | Tags top 3 |")
     out.append("| --- | --- | --- | --- | --- |")
     for s in misses[:80]:
-        sims = detail[s]["similarities"]
-        emb = ", ".join(f"{x} ({sims.get(x, '?')})" for x in results["embeddings"][s][:3]) or "—"
+        sims = detail[shown].get(s, {})
+        got = ", ".join(f"{x} ({sims.get(x, '?')})" for x in results[shown][s][:3]) or "—"
         tags = ", ".join(results["tags"][s][:3]) or "—"
         p, t = labels_of(techniques, s)
-        out.append(f"| {s} | {p or '—'} / {t or '—'} | {', '.join(sorted(relevant[s])[:3])} | {emb} | {tags} |")
+        out.append(f"| {s} | {p or '—'} / {t or '—'} | {', '.join(sorted(relevant[s])[:3])} | {got} | {tags} |")
     out.append("")
     return "\n".join(out) + "\n"
 
@@ -640,7 +777,9 @@ def main(argv: list[str] | None = None) -> None:
     p_label.add_argument("--yes", action="store_true", help="actually spend tokens; without it, only estimate")
     p_check = sub.add_parser("check", help="write 20 LeetCode-similar pairs for a hand check")
     p_check.add_argument("--seed", type=int, default=7)
-    sub.add_parser("run", help="score both methods against all label sets")
+    p_hyde = sub.add_parser("hyde", help="write and embed three plausible approaches per problem (cached)")
+    p_hyde.add_argument("--yes", action="store_true", help="actually spend tokens; without it, only estimate")
+    sub.add_parser("run", help="score every method against all label sets")
 
     args = parser.parse_args(argv)
     if args.command == "fetch":
@@ -649,6 +788,8 @@ def main(argv: list[str] | None = None) -> None:
         asyncio.run(label(args.token, args.yes))
     elif args.command == "check":
         asyncio.run(check(args.token, args.seed))
+    elif args.command == "hyde":
+        asyncio.run(hyde(args.token, args.yes))
     elif args.command == "run":
         asyncio.run(run(args.token))
 

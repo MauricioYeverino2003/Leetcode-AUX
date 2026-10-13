@@ -153,8 +153,16 @@ the panel's do.
 uv run python -m app.recall_eval fetch        # LeetCode's data on every solved problem -> benchmarks/problems.json (cached, gitignored)
 uv run python -m app.recall_eval label --yes  # a pattern + technique per solution on SUMMARY_MODEL -> benchmarks/techniques.json
 uv run python -m app.recall_eval check        # 20 LeetCode-similar pairs to judge by hand -> benchmarks/recall-handcheck.json
-uv run python -m app.recall_eval run          # hit@k, recall@k, MRR for tags vs embeddings -> docs/recall-eval.md
+uv run python -m app.recall_eval hyde --yes   # three plausible approaches per problem, embedded -> benchmarks/problems-hyde.json
+uv run python -m app.recall_eval run          # hit@k, recall@k, MRR for every method -> docs/recall-eval.md
 ```
+
+`hyde` is the query-side experiment: instead of embedding the problem's
+statement (which says what is asked, not how it is solved), the summary
+model writes three plausible approaches in the saved summaries' style and
+those are embedded. `run` then scores `hyde` (best match against any
+approach) and `hyde + statement` beside the plain-statement method, on the
+same queries and labels, and says what each fixes or breaks relative to it.
 
 For each solved problem with a statement and at least one relative,
 retrieval runs with the query's own row excluded, by tags and by embeddings,

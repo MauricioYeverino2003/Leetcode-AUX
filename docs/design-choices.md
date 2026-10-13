@@ -631,6 +631,44 @@ across six problems), which is the case for HyDE in `future-work.md` §2.
 
 ---
 
+## HyDE for recall: tested, marginal, not shipped
+
+Query-side HyDE — a cheap model writes three plausible approaches for the
+open problem in the saved summaries' style, those are embedded, and a saved
+solution scores by its best match against any of them — was run through
+the recall evaluation on 2026-10-14 and left in the harness rather than
+shipped.
+
+**Why it was worth testing.** Recall embeds the problem statement and
+searches solution summaries: a question against answers. That explained
+the gap between finding *related* problems (LeetCode-similar tier, hit@3
+85%) and finding problems *solved the same way* (same-technique tier,
+65%): Rotting Oranges recalled grid-DFS problems, Letter Combinations
+recalled Open the Lock. Answer-shaped queries should close it.
+
+**What it did.** Same-technique tier: `hyde` 69% hit@3 against 65%, fixing
+11 queries and breaking 5 of 153; recall@3 30% vs 26%; MRR 0.57 vs 0.55.
+LeetCode-similar tier: 83% vs 85% at k = 3, 91% vs 90% at k = 5. Same
+pattern: unchanged. `hyde + statement` sat between the two on every tier.
+Four points on 16 discordant queries is suggestive, not established.
+
+**Why not ship.** A small gain on one tier and a small loss on another,
+bought with a model call and several seconds the first time any problem is
+opened. Not a trade worth making on this evidence. The misses also showed
+that the next limit is elsewhere: some are the labels being finer than a
+person would be (Longest Increasing Path in a Matrix labeled as tree DFS,
+so grid-DFS answers count as misses; Stone Game retrieving Stone Game II
+and III at 0.72 and marked wrong because those were labeled take-or-skip),
+and the generated approaches describe the canonical solution where the
+summaries describe the user's own.
+
+**What stays.** The `hyde` command and the two scored variants remain in
+`app/recall_eval.py`, so any future document-side change (statements on the
+rows, summaries that state their technique) is scored against the same
+baselines. The harness is now the way recall decisions get made.
+
+---
+
 ## Evaluating recall: "solved similarly", two label sets, one harness
 
 Recall gets a number: for each of the user's solved problems, does

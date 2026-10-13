@@ -93,13 +93,14 @@ all users. Never shown to the user or the tutor.
 the statement (topic) and one of the summary (approach) — and a combined
 score. No extra model call; needs statements for imported rows (§6).
 
-**Judged by** the recall evaluation (§7), which now gives the baseline to
-beat: on the same-technique tier (one of 72 specific techniques per saved
-solution), embeddings reach hit@3 65% against 55% for tags, while on
-LeetCode's similar-questions tier they reach 85%. The twenty points
-between 85 and 65 are the topic-versus-approach gap this section is about,
-and a third of problems get no same-technique solution in the top three
-from either method. HyDE is worth building if it moves the 65.
+**Tested 2026-10-14, not shipped.** On the same-technique tier HyDE
+reached hit@3 69% against 65% (fixing 11 queries, breaking 5 of 153) and
+gave up two points on the LeetCode-similar tier. Suggestive, not enough to
+pay a model call and several seconds per newly opened problem. The command
+stays in the harness. The next lever for recall quality is the document
+side — statements on the imported rows, and summaries that state their
+technique — judged on the same baselines; and some of the remaining
+"misses" are label granularity rather than retrieval.
 
 **Cost.** HyDE: one small-model call per *new* problem (~$0.001 on
 `gpt-5-mini`), nothing for problems already cached; 2–3 embedding calls
