@@ -138,16 +138,20 @@ number.
 ## Recall evaluation
 
 How often recall finds what it should, measured over the developer's own
-solved problems, against two label sets: LeetCode's curated Similar
-Questions (external, mixes same-technique with same-series) and one
-technique per saved solution chosen from a fixed list by a cheap model
-reading the summary (what the tutor needs). Each command prompts for the
-Supabase email and password so every query runs under row-level security,
-exactly as the panel's do.
+solved problems, against three label sets: LeetCode's curated Similar
+Questions (external, mixes same-technique with same-series), and two levels
+of labels assigned to each saved solution by a cheap model reading its
+summary — a coarse *pattern* (one of 19) and a specific *technique* (one of
+about 70 under those patterns, the fixed list in `app/recall_eval.py`).
+"Same technique" is the definition of *solved similarly*: the technique used
+for one would be the right first hint for the other. The model answers with
+the entry's number, not its wording. Each command prompts for the Supabase
+email and password so every query runs under row-level security, exactly as
+the panel's do.
 
 ```
 uv run python -m app.recall_eval fetch        # LeetCode's data on every solved problem -> benchmarks/problems.json (cached, gitignored)
-uv run python -m app.recall_eval label --yes  # one technique per solution on SUMMARY_MODEL -> benchmarks/techniques.json
+uv run python -m app.recall_eval label --yes  # a pattern + technique per solution on SUMMARY_MODEL -> benchmarks/techniques.json
 uv run python -m app.recall_eval check        # 20 LeetCode-similar pairs to judge by hand -> benchmarks/recall-handcheck.json
 uv run python -m app.recall_eval run          # hit@k, recall@k, MRR for tags vs embeddings -> docs/recall-eval.md
 ```

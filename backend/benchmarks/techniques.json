@@ -1,179 +1,710 @@
 {
-  "two-sum": "arrays & hashing",
-  "add-two-numbers": "linked list",
-  "score-of-parentheses": "stack",
-  "valid-parenthesis-string": "greedy",
-  "cyclically-rotating-a-grid": "simulation",
-  "minimum-add-to-make-parentheses-valid": "stack",
-  "number-of-islands": "graph traversal",
-  "longest-increasing-path-in-a-matrix": "graph traversal",
-  "construct-uniform-parity-array-ii": "arrays & hashing",
-  "construct-uniform-parity-array-i": "simulation",
-  "distinct-subsequences": "unknown",
-  "minimum-operations-to-reduce-x-to-zero": "sliding window",
-  "reverse-substrings-between-each-pair-of-parentheses": "stack",
-  "implement-trie-prefix-tree": "tries",
-  "palindromic-substrings": "unknown",
-  "longest-palindromic-substring": "unknown",
-  "combination-sum-iv": "unknown",
-  "perfect-squares": "unknown",
-  "word-break": "unknown",
-  "integer-break": "unknown",
-  "first-missing-positive": "arrays & hashing",
-  "stone-game": "unknown",
-  "unique-paths": "unknown",
-  "unique-paths-ii": "unknown",
-  "stone-game-iii": "unknown",
-  "minimum-path-sum": "unknown",
-  "longest-common-subsequence": "unknown",
-  "stone-game-ii": "unknown",
-  "last-stone-weight-ii": "unknown",
-  "best-time-to-buy-and-sell-stock-with-cooldown": "unknown",
-  "coin-change-ii": "unknown",
-  "target-sum": "unknown",
-  "interleaving-string": "unknown",
-  "design-hashset": "arrays & hashing",
-  "design-hashmap": "arrays & hashing",
-  "sort-colors": "arrays & hashing",
-  "range-sum-query-2d-immutable": "unknown",
-  "best-time-to-buy-and-sell-stock-ii": "greedy",
-  "majority-element-ii": "greedy",
-  "baseball-game": "stack",
-  "implement-stack-using-queues": "simulation",
-  "implement-queue-using-stacks": "simulation",
-  "reverse-string": "two pointers",
-  "valid-palindrome-ii": "two pointers",
-  "merge-strings-alternately": "two pointers",
-  "merge-sorted-array": "two pointers",
-  "rotate-array": "arrays & hashing",
-  "remove-duplicates-from-sorted-array": "two pointers",
-  "4sum": "two pointers",
-  "online-stock-span": "stack",
-  "asteroid-collision": "stack",
-  "search-insert-position": "binary search",
-  "guess-number-higher-or-lower": "binary search",
-  "sqrtx": "binary search",
-  "find-minimum-in-rotated-sorted-array": "binary search",
-  "search-in-rotated-sorted-array": "binary search",
-  "search-in-rotated-sorted-array-ii": "binary search",
-  "subarray-sum-equals-k": "arrays & hashing",
-  "contains-duplicate-ii": "sliding window",
-  "invert-binary-tree": "trees",
-  "balanced-binary-tree": "trees",
-  "subtree-of-another-tree": "trees",
-  "insert-into-a-binary-search-tree": "trees",
-  "delete-node-in-a-bst": "trees",
-  "max-area-of-island": "graph traversal",
-  "clone-graph": "graph traversal",
-  "rotting-oranges": "graph traversal",
-  "course-schedule": "graph traversal",
-  "course-schedule-ii": "graph traversal",
-  "course-schedule-iv": "graph traversal",
-  "accounts-merge": "graph traversal",
-  "validate-binary-search-tree": "trees",
-  "single-threaded-cpu": "heap",
-  "design-twitter": "heap",
-  "longest-happy-string": "greedy",
-  "reorganize-string": "heap",
-  "car-pooling": "heap",
-  "task-scheduler": "heap",
-  "ipo": "heap",
-  "evaluate-division": "graph traversal",
-  "count-prefix-and-suffix-pairs-i": "simulation",
-  "design-add-and-search-words-data-structure": "tries",
-  "reverse-linked-list": "two pointers",
-  "merge-two-sorted-lists": "linked list",
-  "linked-list-cycle": "two pointers",
-  "reorder-list": "linked list",
-  "copy-list-with-random-pointer": "linked list",
-  "reverse-linked-list-ii": "linked list",
-  "design-circular-queue": "arrays & hashing",
-  "climbing-stairs": "unknown",
-  "min-cost-climbing-stairs": "unknown",
-  "house-robber": "unknown",
-  "house-robber-ii": "unknown",
-  "coin-change": "unknown",
-  "reverse-nodes-in-k-group": "linked list",
-  "maximum-product-subarray": "unknown",
-  "partition-equal-subset-sum": "unknown",
-  "capacity-to-ship-packages-within-d-days": "binary search",
-  "time-based-key-value-store": "binary search",
-  "remove-nth-node-from-end-of-list": "linked list",
-  "find-the-duplicate-number": "arrays & hashing",
-  "merge-k-sorted-lists": "linked list",
-  "diameter-of-binary-tree": "trees",
-  "same-tree": "trees",
-  "maximum-depth-of-binary-tree": "trees",
-  "lru-cache": "linked list",
-  "longest-substring-without-repeating-characters": "sliding window",
-  "valid-sudoku": "arrays & hashing",
-  "longest-repeating-character-replacement": "sliding window",
-  "permutation-in-string": "sliding window",
-  "lowest-common-ancestor-of-a-binary-search-tree": "trees",
-  "binary-tree-level-order-traversal": "trees",
-  "binary-tree-right-side-view": "trees",
-  "count-good-nodes-in-binary-tree": "trees",
-  "kth-smallest-element-in-a-bst": "trees",
-  "valid-parentheses": "stack",
-  "min-stack": "stack",
-  "evaluate-reverse-polish-notation": "stack",
-  "generate-parentheses": "backtracking",
-  "car-fleet": "greedy",
-  "daily-temperatures": "stack",
-  "subsets": "backtracking",
-  "combination-sum": "backtracking",
-  "subsets-ii": "backtracking",
-  "combination-sum-ii": "backtracking",
-  "word-search": "backtracking",
-  "letter-combinations-of-a-phone-number": "backtracking",
-  "permutations": "backtracking",
-  "pacific-atlantic-water-flow": "graph traversal",
-  "surrounded-regions": "graph traversal",
-  "redundant-connection": "advanced graphs",
-  "single-number": "bit manipulation",
-  "number-of-1-bits": "bit manipulation",
-  "counting-bits": "bit manipulation",
-  "contains-duplicate": "arrays & hashing",
-  "valid-anagram": "arrays & hashing",
-  "longest-consecutive-sequence": "arrays & hashing",
-  "valid-palindrome": "two pointers",
-  "two-sum-ii-input-array-is-sorted": "two pointers",
-  "3sum": "two pointers",
-  "best-time-to-buy-and-sell-stock": "two pointers",
-  "kth-largest-element-in-a-stream": "heap",
-  "last-stone-weight": "heap",
-  "k-closest-points-to-origin": "heap",
-  "kth-largest-element-in-an-array": "heap",
-  "edit-distance": "unknown",
-  "binary-search": "binary search",
-  "search-a-2d-matrix": "binary search",
-  "group-anagrams": "arrays & hashing",
-  "product-of-array-except-self": "arrays & hashing",
-  "top-k-frequent-elements": "arrays & hashing",
-  "longest-increasing-subsequence": "unknown",
-  "binary-tree-inorder-traversal": "trees",
-  "construct-binary-tree-from-preorder-and-inorder-traversal": "trees",
-  "unique-binary-search-trees-ii": "trees",
-  "binary-tree-maximum-path-sum": "trees",
-  "serialize-and-deserialize-binary-tree": "trees",
-  "maximum-subarray": "unknown",
-  "jump-game": "greedy",
-  "jump-game-ii": "greedy",
-  "network-delay-time": "heap",
-  "reconstruct-itinerary": "graph traversal",
-  "min-cost-to-connect-all-points": "heap",
-  "binary-tree-preorder-traversal": "trees",
-  "binary-tree-postorder-traversal": "trees",
-  "concatenation-of-array": "arrays & hashing",
-  "longest-common-prefix": "arrays & hashing",
-  "remove-element": "two pointers",
-  "find-median-from-data-stream": "heap",
-  "gas-station": "greedy",
-  "island-perimeter": "simulation",
-  "verifying-an-alien-dictionary": "arrays & hashing",
-  "find-the-town-judge": "graph traversal",
-  "open-the-lock": "graph traversal",
-  "n-th-tribonacci-number": "unknown",
-  "decode-ways": "unknown",
-  "sort-an-array": "arrays & hashing"
+  "two-sum": {
+    "pattern": "arrays & hashing",
+    "technique": "hash map of complements"
+  },
+  "add-two-numbers": {
+    "pattern": "linked list",
+    "technique": "dummy-head splicing"
+  },
+  "score-of-parentheses": {
+    "pattern": "stack",
+    "technique": "bracket matching"
+  },
+  "valid-parenthesis-string": {
+    "pattern": "greedy",
+    "technique": "counting balance"
+  },
+  "cyclically-rotating-a-grid": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "minimum-add-to-make-parentheses-valid": {
+    "pattern": "stack",
+    "technique": "bracket matching"
+  },
+  "number-of-islands": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "longest-increasing-path-in-a-matrix": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "construct-uniform-parity-array-ii": {
+    "pattern": "greedy",
+    "technique": "one-pass local optimum"
+  },
+  "construct-uniform-parity-array-i": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "distinct-subsequences": {
+    "pattern": "2-D dynamic programming",
+    "technique": "edit distance / LCS"
+  },
+  "minimum-operations-to-reduce-x-to-zero": {
+    "pattern": "sliding window",
+    "technique": "variable size with counts"
+  },
+  "reverse-substrings-between-each-pair-of-parentheses": {
+    "pattern": "stack",
+    "technique": "bracket matching"
+  },
+  "implement-trie-prefix-tree": {
+    "pattern": "tries",
+    "technique": "prefix trie"
+  },
+  "palindromic-substrings": {
+    "pattern": "2-D dynamic programming",
+    "technique": "interval DP"
+  },
+  "longest-palindromic-substring": {
+    "pattern": "2-D dynamic programming",
+    "technique": "interval DP"
+  },
+  "combination-sum-iv": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "perfect-squares": {
+    "pattern": "1-D dynamic programming",
+    "technique": "1-D knapsack"
+  },
+  "word-break": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "integer-break": {
+    "pattern": "1-D dynamic programming",
+    "technique": "1-D knapsack"
+  },
+  "first-missing-positive": {
+    "pattern": "arrays & hashing",
+    "technique": "value as index or bucket"
+  },
+  "stone-game": {
+    "pattern": "2-D dynamic programming",
+    "technique": "interval DP"
+  },
+  "unique-paths": {
+    "pattern": "2-D dynamic programming",
+    "technique": "grid paths"
+  },
+  "unique-paths-ii": {
+    "pattern": "2-D dynamic programming",
+    "technique": "grid paths"
+  },
+  "stone-game-iii": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "minimum-path-sum": {
+    "pattern": "2-D dynamic programming",
+    "technique": "grid paths"
+  },
+  "longest-common-subsequence": {
+    "pattern": "2-D dynamic programming",
+    "technique": "edit distance / LCS"
+  },
+  "stone-game-ii": {
+    "pattern": "2-D dynamic programming",
+    "technique": "game DP"
+  },
+  "last-stone-weight-ii": {
+    "pattern": "1-D dynamic programming",
+    "technique": "1-D knapsack"
+  },
+  "best-time-to-buy-and-sell-stock-with-cooldown": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "coin-change-ii": {
+    "pattern": "1-D dynamic programming",
+    "technique": "1-D knapsack"
+  },
+  "target-sum": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "interleaving-string": {
+    "pattern": "2-D dynamic programming",
+    "technique": "grid paths"
+  },
+  "design-hashset": {
+    "pattern": "arrays & hashing",
+    "technique": "value as index or bucket"
+  },
+  "design-hashmap": {
+    "pattern": "simulation",
+    "technique": "design a data structure"
+  },
+  "sort-colors": {
+    "pattern": "arrays & hashing",
+    "technique": "counting / frequency map"
+  },
+  "range-sum-query-2d-immutable": {
+    "pattern": "arrays & hashing",
+    "technique": "prefix sums"
+  },
+  "best-time-to-buy-and-sell-stock-ii": {
+    "pattern": "greedy",
+    "technique": "one-pass local optimum"
+  },
+  "majority-element-ii": {
+    "pattern": "greedy",
+    "technique": "one-pass local optimum"
+  },
+  "baseball-game": {
+    "pattern": "stack",
+    "technique": "stack simulation"
+  },
+  "implement-stack-using-queues": {
+    "pattern": "simulation",
+    "technique": "design a data structure"
+  },
+  "implement-queue-using-stacks": {
+    "pattern": "simulation",
+    "technique": "design a data structure"
+  },
+  "reverse-string": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "valid-palindrome-ii": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "merge-strings-alternately": {
+    "pattern": "two pointers",
+    "technique": "in-place partition"
+  },
+  "merge-sorted-array": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "rotate-array": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "remove-duplicates-from-sorted-array": {
+    "pattern": "two pointers",
+    "technique": "in-place partition"
+  },
+  "4sum": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "online-stock-span": {
+    "pattern": "stack",
+    "technique": "monotonic stack"
+  },
+  "asteroid-collision": {
+    "pattern": "stack",
+    "technique": "stack simulation"
+  },
+  "search-insert-position": {
+    "pattern": "binary search",
+    "technique": "on a sorted array"
+  },
+  "guess-number-higher-or-lower": {
+    "pattern": "binary search",
+    "technique": "on a sorted array"
+  },
+  "sqrtx": {
+    "pattern": "binary search",
+    "technique": "on the answer space"
+  },
+  "find-minimum-in-rotated-sorted-array": {
+    "pattern": "binary search",
+    "technique": "on a rotated array"
+  },
+  "search-in-rotated-sorted-array": {
+    "pattern": "binary search",
+    "technique": "on a rotated array"
+  },
+  "search-in-rotated-sorted-array-ii": {
+    "pattern": "binary search",
+    "technique": "on a rotated array"
+  },
+  "subarray-sum-equals-k": {
+    "pattern": "arrays & hashing",
+    "technique": "prefix sums"
+  },
+  "contains-duplicate-ii": {
+    "pattern": "sliding window",
+    "technique": "variable size with counts"
+  },
+  "invert-binary-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "balanced-binary-tree": {
+    "pattern": "trees",
+    "technique": "tree DP (postorder returns)"
+  },
+  "subtree-of-another-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "insert-into-a-binary-search-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "delete-node-in-a-bst": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "max-area-of-island": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "clone-graph": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "rotting-oranges": {
+    "pattern": "graph traversal",
+    "technique": "BFS shortest steps"
+  },
+  "course-schedule": {
+    "pattern": "graph traversal",
+    "technique": "cycle detection"
+  },
+  "course-schedule-ii": {
+    "pattern": "graph traversal",
+    "technique": "topological sort"
+  },
+  "course-schedule-iv": {
+    "pattern": "graph traversal",
+    "technique": "build adjacency and walk"
+  },
+  "accounts-merge": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "validate-binary-search-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "single-threaded-cpu": {
+    "pattern": "heap",
+    "technique": "scheduling with a heap"
+  },
+  "design-twitter": {
+    "pattern": "heap",
+    "technique": "k-way merge"
+  },
+  "longest-happy-string": {
+    "pattern": "heap",
+    "technique": "top-k"
+  },
+  "reorganize-string": {
+    "pattern": "heap",
+    "technique": "scheduling with a heap"
+  },
+  "car-pooling": {
+    "pattern": "intervals",
+    "technique": "sweep line"
+  },
+  "task-scheduler": {
+    "pattern": "heap",
+    "technique": "scheduling with a heap"
+  },
+  "ipo": {
+    "pattern": "heap",
+    "technique": "two heaps"
+  },
+  "evaluate-division": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "count-prefix-and-suffix-pairs-i": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "design-add-and-search-words-data-structure": {
+    "pattern": "graph traversal",
+    "technique": "BFS over states"
+  },
+  "reverse-linked-list": {
+    "pattern": "linked list",
+    "technique": "reversal"
+  },
+  "merge-two-sorted-lists": {
+    "pattern": "linked list",
+    "technique": "dummy-head splicing"
+  },
+  "linked-list-cycle": {
+    "pattern": "linked list",
+    "technique": "fast and slow pointers"
+  },
+  "reorder-list": {
+    "pattern": "linked list",
+    "technique": "fast and slow pointers"
+  },
+  "copy-list-with-random-pointer": {
+    "pattern": "linked list",
+    "technique": "copy with a map"
+  },
+  "reverse-linked-list-ii": {
+    "pattern": "linked list",
+    "technique": "reversal"
+  },
+  "design-circular-queue": {
+    "pattern": "simulation",
+    "technique": "design a data structure"
+  },
+  "climbing-stairs": {
+    "pattern": "1-D dynamic programming",
+    "technique": "Fibonacci-style"
+  },
+  "min-cost-climbing-stairs": {
+    "pattern": "1-D dynamic programming",
+    "technique": "Fibonacci-style"
+  },
+  "house-robber": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "house-robber-ii": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "coin-change": {
+    "pattern": "1-D dynamic programming",
+    "technique": "1-D knapsack"
+  },
+  "reverse-nodes-in-k-group": {
+    "pattern": "linked list",
+    "technique": "dummy-head splicing"
+  },
+  "maximum-product-subarray": {
+    "pattern": "1-D dynamic programming",
+    "technique": "take-or-skip"
+  },
+  "partition-equal-subset-sum": {
+    "pattern": "arrays & hashing",
+    "technique": "set membership"
+  },
+  "capacity-to-ship-packages-within-d-days": {
+    "pattern": "binary search",
+    "technique": "on the answer space"
+  },
+  "time-based-key-value-store": {
+    "pattern": "binary search",
+    "technique": "on a sorted array"
+  },
+  "remove-nth-node-from-end-of-list": {
+    "pattern": "linked list",
+    "technique": "dummy-head splicing"
+  },
+  "find-the-duplicate-number": {
+    "pattern": "arrays & hashing",
+    "technique": "value as index or bucket"
+  },
+  "merge-k-sorted-lists": {
+    "pattern": "linked list",
+    "technique": "dummy-head splicing"
+  },
+  "diameter-of-binary-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "same-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "maximum-depth-of-binary-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "lru-cache": {
+    "pattern": "simulation",
+    "technique": "design a data structure"
+  },
+  "longest-substring-without-repeating-characters": {
+    "pattern": "sliding window",
+    "technique": "variable size with counts"
+  },
+  "valid-sudoku": {
+    "pattern": "arrays & hashing",
+    "technique": "set membership"
+  },
+  "longest-repeating-character-replacement": {
+    "pattern": "sliding window",
+    "technique": "variable size with counts"
+  },
+  "permutation-in-string": {
+    "pattern": "sliding window",
+    "technique": "variable size with counts"
+  },
+  "lowest-common-ancestor-of-a-binary-search-tree": {
+    "pattern": "trees",
+    "technique": "BST property"
+  },
+  "binary-tree-level-order-traversal": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "binary-tree-right-side-view": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "count-good-nodes-in-binary-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "kth-smallest-element-in-a-bst": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "valid-parentheses": {
+    "pattern": "stack",
+    "technique": "bracket matching"
+  },
+  "min-stack": {
+    "pattern": "stack",
+    "technique": "stack simulation"
+  },
+  "evaluate-reverse-polish-notation": {
+    "pattern": "stack",
+    "technique": "expression evaluation"
+  },
+  "generate-parentheses": {
+    "pattern": "backtracking",
+    "technique": "constraint search"
+  },
+  "car-fleet": {
+    "pattern": "arrays & hashing",
+    "technique": "sort then scan"
+  },
+  "daily-temperatures": {
+    "pattern": "stack",
+    "technique": "monotonic stack"
+  },
+  "subsets": {
+    "pattern": "backtracking",
+    "technique": "subsets and combinations"
+  },
+  "combination-sum": {
+    "pattern": "backtracking",
+    "technique": "subsets and combinations"
+  },
+  "subsets-ii": {
+    "pattern": "backtracking",
+    "technique": "subsets and combinations"
+  },
+  "combination-sum-ii": {
+    "pattern": "backtracking",
+    "technique": "subsets and combinations"
+  },
+  "word-search": {
+    "pattern": "backtracking",
+    "technique": "grid DFS with marking"
+  },
+  "letter-combinations-of-a-phone-number": {
+    "pattern": "backtracking",
+    "technique": "subsets and combinations"
+  },
+  "permutations": {
+    "pattern": "backtracking",
+    "technique": "permutations"
+  },
+  "pacific-atlantic-water-flow": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "surrounded-regions": {
+    "pattern": "graph traversal",
+    "technique": "DFS components / flood fill"
+  },
+  "redundant-connection": {
+    "pattern": "graph traversal",
+    "technique": "union-find"
+  },
+  "single-number": {
+    "pattern": "bit manipulation",
+    "technique": "XOR trick"
+  },
+  "number-of-1-bits": {
+    "pattern": "bit manipulation",
+    "technique": "bit counting"
+  },
+  "counting-bits": {
+    "pattern": "bit manipulation",
+    "technique": "bit counting"
+  },
+  "contains-duplicate": {
+    "pattern": "arrays & hashing",
+    "technique": "set membership"
+  },
+  "valid-anagram": {
+    "pattern": "arrays & hashing",
+    "technique": "counting / frequency map"
+  },
+  "longest-consecutive-sequence": {
+    "pattern": "arrays & hashing",
+    "technique": "set membership"
+  },
+  "valid-palindrome": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "two-sum-ii-input-array-is-sorted": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "3sum": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "best-time-to-buy-and-sell-stock": {
+    "pattern": "two pointers",
+    "technique": "fast and slow"
+  },
+  "kth-largest-element-in-a-stream": {
+    "pattern": "heap",
+    "technique": "top-k"
+  },
+  "last-stone-weight": {
+    "pattern": "heap",
+    "technique": "top-k"
+  },
+  "k-closest-points-to-origin": {
+    "pattern": "heap",
+    "technique": "top-k"
+  },
+  "kth-largest-element-in-an-array": {
+    "pattern": "heap",
+    "technique": "top-k"
+  },
+  "edit-distance": {
+    "pattern": "2-D dynamic programming",
+    "technique": "edit distance / LCS"
+  },
+  "binary-search": {
+    "pattern": "binary search",
+    "technique": "on a sorted array"
+  },
+  "search-a-2d-matrix": {
+    "pattern": "binary search",
+    "technique": "on a sorted array"
+  },
+  "group-anagrams": {
+    "pattern": "arrays & hashing",
+    "technique": "counting / frequency map"
+  },
+  "product-of-array-except-self": {
+    "pattern": "arrays & hashing",
+    "technique": "prefix sums"
+  },
+  "top-k-frequent-elements": {
+    "pattern": "arrays & hashing",
+    "technique": "counting / frequency map"
+  },
+  "longest-increasing-subsequence": {
+    "pattern": "1-D dynamic programming",
+    "technique": "longest subsequence"
+  },
+  "binary-tree-inorder-traversal": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "construct-binary-tree-from-preorder-and-inorder-traversal": {
+    "pattern": "trees",
+    "technique": "build from traversals"
+  },
+  "unique-binary-search-trees-ii": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "binary-tree-maximum-path-sum": {
+    "pattern": "trees",
+    "technique": "tree DP (postorder returns)"
+  },
+  "serialize-and-deserialize-binary-tree": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "maximum-subarray": {
+    "pattern": "1-D dynamic programming",
+    "technique": "Kadane"
+  },
+  "jump-game": {
+    "pattern": "greedy",
+    "technique": "furthest reach"
+  },
+  "jump-game-ii": {
+    "pattern": "greedy",
+    "technique": "furthest reach"
+  },
+  "network-delay-time": {
+    "pattern": "advanced graphs",
+    "technique": "Dijkstra"
+  },
+  "reconstruct-itinerary": {
+    "pattern": "graph traversal",
+    "technique": "build adjacency and walk"
+  },
+  "min-cost-to-connect-all-points": {
+    "pattern": "graph traversal",
+    "technique": "build adjacency and walk"
+  },
+  "binary-tree-preorder-traversal": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "binary-tree-postorder-traversal": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  },
+  "concatenation-of-array": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "longest-common-prefix": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "remove-element": {
+    "pattern": "two pointers",
+    "technique": "opposite ends"
+  },
+  "find-median-from-data-stream": {
+    "pattern": "heap",
+    "technique": "two heaps"
+  },
+  "gas-station": {
+    "pattern": "greedy",
+    "technique": "one-pass local optimum"
+  },
+  "island-perimeter": {
+    "pattern": "arrays & hashing",
+    "technique": "matrix traversal"
+  },
+  "verifying-an-alien-dictionary": {
+    "pattern": "simulation",
+    "technique": "follow the rules"
+  },
+  "find-the-town-judge": {
+    "pattern": "arrays & hashing",
+    "technique": "counting / frequency map"
+  },
+  "open-the-lock": {
+    "pattern": "graph traversal",
+    "technique": "BFS shortest steps"
+  },
+  "n-th-tribonacci-number": {
+    "pattern": "1-D dynamic programming",
+    "technique": "Fibonacci-style"
+  },
+  "decode-ways": {
+    "pattern": "1-D dynamic programming",
+    "technique": "Fibonacci-style"
+  },
+  "sort-an-array": {
+    "pattern": "trees",
+    "technique": "DFS recursion"
+  }
 }

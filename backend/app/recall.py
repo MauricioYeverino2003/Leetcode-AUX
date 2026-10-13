@@ -36,9 +36,10 @@ MAX_PRIOR = 3
 CANDIDATES = 50
 
 # Recall by meaning: below this cosine similarity a row is noise, however
-# nearest it is. Started at 0.4 and tuned by reading the scores the panel
-# shows next to each recalled problem.
-MIN_SIMILARITY = 0.4
+# nearest it is. Started at 0.4; the recall evaluation (docs/recall-eval.md,
+# 2026-10-13) showed that floor cost about three points of hit@3 on every
+# label set for no gain, so 0.35 — still above the 0.3-range noise.
+MIN_SIMILARITY = 0.35
 
 # Per shared non-generic tag, on top of the similarity.
 TAG_BONUS = 0.05
