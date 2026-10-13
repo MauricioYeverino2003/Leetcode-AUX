@@ -13,6 +13,12 @@ dist/
 .env.*
 !.env.example
 
+# Recall evaluation caches: LeetCode's problem text and query embeddings
+backend/benchmarks/problems*.json
+
+# Personal reading notes, not part of the project
+toRead/
+
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/

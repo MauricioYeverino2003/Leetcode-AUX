@@ -93,9 +93,13 @@ all users. Never shown to the user or the tutor.
 the statement (topic) and one of the summary (approach) — and a combined
 score. No extra model call; needs statements for imported rows (§6).
 
-**Judged by** a recall test set (§7): problems with hand-listed expected
-relatives, scored by how many land in the top three. Build the set before
-either change, so plain recall gets a baseline number.
+**Judged by** the recall evaluation (§7), which now gives the baseline to
+beat: on the same-technique tier (one of 72 specific techniques per saved
+solution), embeddings reach hit@3 65% against 55% for tags, while on
+LeetCode's similar-questions tier they reach 85%. The twenty points
+between 85 and 65 are the topic-versus-approach gap this section is about,
+and a third of problems get no same-technique solution in the top three
+from either method. HyDE is worth building if it moves the 65.
 
 **Cost.** HyDE: one small-model call per *new* problem (~$0.001 on
 `gpt-5-mini`), nothing for problems already cached; 2–3 embedding calls
@@ -181,10 +185,13 @@ cases already exist; the classifier would reuse them.
 
 ## 7. Evaluation that doesn't depend on reading everything
 
-- **A recall test set**: `benchmarks/recall-cases.json` — a problem (slug,
-  title, tags, statement) and the slugs it should recall, from the user's
-  own history. Scored automatically (top-3 hit rate) because expected
-  relatives are facts, unlike hint quality.
+- **A recall test set** — done 2026-10-13 (`app/recall_eval.py`,
+  `docs/recall-eval.md`): LeetCode's Similar Questions and per-solution
+  technique labels as two label sets, hit@k / recall@k / MRR for tags vs
+  embeddings. Round 2 (same day) added two-level labels — a pattern and
+  one of 72 specific techniques, chosen by number — and the DP problems
+  that had come back unknown. Still to do: the 20-pair hand check, which
+  is what puts an error bar on the labels.
 - **Thumbs up / down on replies** in the panel, written to the benchmark
   log: the cheapest way to grow the case set from real use.
 - **An LLM judge**, only once the rubric per case is stable enough to

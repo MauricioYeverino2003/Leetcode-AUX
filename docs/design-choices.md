@@ -631,6 +631,115 @@ across six problems), which is the case for HyDE in `future-work.md` §2.
 
 ---
 
+## Evaluating recall: "solved similarly", two label sets, one harness
+
+Recall gets a number: for each of the user's solved problems, does
+retrieval over their other solutions return one it should? Scored as hit@k,
+recall@k and MRR at k = 1, 3, 5, for tags and for embeddings on identical
+rows, by `app/recall_eval.py`, into `docs/recall-eval.md`.
+
+**Context.** Recall by meaning had one data point (the 301 case study), and
+the resume review was right that a case study is not a measurement. Before
+measuring, "similar" had to be defined: embeddings measure wording,
+LeetCode's Similar Questions measure its editors' judgment, and the tutor
+needs a third thing.
+
+**Definition.** Two problems are *solved similarly* when the technique in
+the saved summary of one would be the right first hint for the other. Topic
+is not enough: House Robber I–IV share a story and span linear DP, circular
+DP, tree DP and binary search on the answer.
+
+**Two label sets, because each measures something different.**
+
+- *LeetCode similar*: LeetCode's curated list, read through the public
+  `question` query (verified 2026-10-12: Two Sum lists 21), taken in either
+  direction and restricted to problems the user solved. External and free,
+  but it mixes same-technique with same-series, so a hit can mean the wrong
+  thing. A 20-pair hand check estimates how often it means the right one.
+- *Same technique*: one technique per saved solution from a fixed list
+  (NeetCode's patterns, adapted), chosen by a cheap model from the summary
+  — i.e. from how the user actually solved it. This is the definition
+  above made operational; its weakness is that it is our model's judgment
+  of our own summaries.
+
+Where the two agree a label is strong; the report says how often they do.
+
+**Why the query's own row is excluded.** The query problem is in the table
+(the user solved it), and recall deliberately ranks the same problem first.
+For the evaluation that row is removed from the candidates, so the score
+measures finding *other* related problems, which is what matters on a
+problem the user hasn't solved.
+
+**What is held constant.** Same 178 rows for both methods; k fixed; the
+0.4 floor fixed before any run (a no-floor variant is reported alongside,
+to show what the floor costs); labels fixed before scoring. The harness
+signs in as the developer and runs every query through row-level security,
+the same path as the panel.
+
+**What the numbers can say.** How often each method finds a LeetCode-similar
+or same-technique solved problem in the top 3, over N of one user's
+problems. Not how it would do on another history, and not better than the
+labels: the technique tier inherits whatever the summaries got wrong.
+
+**Cost.** LeetCode: one public request per solved problem, once, cached.
+Labels: one `gpt-5-mini` call per problem, a few cents. Queries: one
+embedding per problem, about a cent. Re-runs are free.
+
+**Results (2026-10-13, 178 rows, 177 problems).** On the LeetCode tier (86
+queries) embeddings reach hit@3 84% and MRR 0.72 against 44% and 0.32 for
+tags: on five of six problems, one of the three recalled solutions is one
+LeetCode itself lists as similar. On the technique tier (144 queries)
+embeddings and tags tie at hit@3 76–78%: embedding similarity measures
+topic, and adds nothing on technique beyond what LeetCode's tags encode.
+*Generate Parentheses* (backtracking) recalled stack and greedy parentheses
+problems — right topic, wrong approach — which is the measured case for
+query-side HyDE. The technique tier itself is too coarse to be the final
+word: 32 of 177 labels came back `unknown`, "arrays & hashing" holds 21
+problems, and only 49% of LeetCode-similar pairs share a bucket; for Two Sum
+the labels demand Contains Duplicate while embeddings returned Two Sum II
+and 3Sum. Finer labels (pattern plus sub-technique) and the hand check are
+the next step. The 0.4 floor costs about three points of hit@3 on both
+tiers.
+
+**Round 2 (2026-10-13).** The 32 unknowns were all the dynamic-programming
+problems: the model answered, but never with the exact phrase "1-D dynamic
+programming" that the matcher demanded. The labeler now lists numbered
+choices and parses a number, so a label can't be lost to wording. The
+labels became two-level — a coarse *pattern* (the 19) and a specific
+*technique* (about 70 under them: "hash map of complements", "monotonic
+stack", "BFS over states", "take-or-skip"…), written out in
+`app/recall_eval.py` as the definition of "solved similarly" — and the
+report scores three tiers: LeetCode similar, same pattern, same technique.
+The production floor moved from 0.4 to 0.35 on the evidence above.
+
+**Round 2 results.** All 177 labeled, 60 of 72 techniques in use, median
+four relatives per query on the fine tier (against eleven on the coarse
+one). LeetCode tier: embeddings hit@3 85%, tags 44% (the floor change
+gained a point). Same pattern: 83% vs 80%. Same technique: **65% vs 55%**,
+MRR 0.55 vs 0.43 — embeddings lead by ten points, and on a third of
+problems neither method puts a same-technique solution in the top three.
+The misses are "right topic, wrong technique" almost without exception:
+Rotting Oranges (BFS) recalls grid-DFS problems, Letter Combinations
+(backtracking) recalls Open the Lock, Time-Based Key-Value Store (binary
+search) recalls design problems. The 85-versus-65 gap is the measured size
+of the topic-versus-approach problem and the baseline HyDE has to beat.
+Only 51% of LeetCode-similar pairs share a technique, so the two tiers
+measure different questions and both stay. Caveats: the labels are a
+model's reading of the summaries and a few are debatable.
+
+**Hand check (2026-10-14).** 16 of 20 LeetCode-similar pairs judged by
+Mauko: 13 (81%) are solved the same way. So the LeetCode tier's 85% is a
+fair stand-in for "found a problem solved similarly". The technique labels
+agreed with the human on 15 of 16 — the one disagreement (Generate
+Parentheses vs Letter Combinations of a Phone Number: constraint search vs
+subsets and combinations) is the taxonomy splitting "build a string
+recursively" finer than a person would. The three human "no"s (Maximum
+Product Subarray / Product of Array Except Self, Contains Duplicate / II,
+Stock II / Stock with Cooldown) are the same-series-different-technique
+cases the evaluation exists to catch, and the labels caught all three.
+
+---
+
 ## Recall: tag overlap, summaries only
 
 On every chat message, the backend looks up the user's saved solutions whose
