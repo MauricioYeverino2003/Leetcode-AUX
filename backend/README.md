@@ -134,3 +134,26 @@ quietly bring the failure back.
 Cost estimates come from `app/prices.py`, a hand-maintained table — check the
 date at the top of it against the vendor's pricing page before quoting a
 number.
+
+## Recall evaluation
+
+How often recall finds what it should, measured over the developer's own
+solved problems, against two label sets: LeetCode's curated Similar
+Questions (external, mixes same-technique with same-series) and one
+technique per saved solution chosen from a fixed list by a cheap model
+reading the summary (what the tutor needs). Each command prompts for the
+Supabase email and password so every query runs under row-level security,
+exactly as the panel's do.
+
+```
+uv run python -m app.recall_eval fetch        # LeetCode's data on every solved problem -> benchmarks/problems.json (cached, gitignored)
+uv run python -m app.recall_eval label --yes  # one technique per solution on SUMMARY_MODEL -> benchmarks/techniques.json
+uv run python -m app.recall_eval check        # 20 LeetCode-similar pairs to judge by hand -> benchmarks/recall-handcheck.json
+uv run python -m app.recall_eval run          # hit@k, recall@k, MRR for tags vs embeddings -> docs/recall-eval.md
+```
+
+For each solved problem with a statement and at least one relative,
+retrieval runs with the query's own row excluded, by tags and by embeddings,
+on the same rows with the production floor, and the top k is scored at
+k = 1, 3, 5. The report also lists every miss at k = 3 with what was
+returned instead, for reading.

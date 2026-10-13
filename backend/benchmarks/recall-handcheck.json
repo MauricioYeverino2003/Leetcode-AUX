@@ -1,0 +1,202 @@
+[
+  {
+    "a": "binary-tree-inorder-traversal",
+    "a_title": "Binary Tree Inorder Traversal",
+    "b": "validate-binary-search-tree",
+    "b_title": "Validate Binary Search Tree",
+    "same_technique_by_labels": true,
+    "technique_a": "trees",
+    "technique_b": "trees",
+    "human": null
+  },
+  {
+    "a": "maximum-product-subarray",
+    "a_title": "Maximum Product Subarray",
+    "b": "product-of-array-except-self",
+    "b_title": "Product of Array Except Self",
+    "same_technique_by_labels": false,
+    "technique_a": "unknown",
+    "technique_b": "arrays & hashing",
+    "human": null
+  },
+  {
+    "a": "binary-tree-inorder-traversal",
+    "a_title": "Binary Tree Inorder Traversal",
+    "b": "binary-tree-preorder-traversal",
+    "b_title": "Binary Tree Preorder Traversal",
+    "same_technique_by_labels": true,
+    "technique_a": "trees",
+    "technique_b": "trees",
+    "human": null
+  },
+  {
+    "a": "subsets",
+    "a_title": "Subsets",
+    "b": "subsets-ii",
+    "b_title": "Subsets II",
+    "same_technique_by_labels": true,
+    "technique_a": "backtracking",
+    "technique_b": "backtracking",
+    "human": null
+  },
+  {
+    "a": "number-of-islands",
+    "a_title": "Number of Islands",
+    "b": "surrounded-regions",
+    "b_title": "Surrounded Regions",
+    "same_technique_by_labels": true,
+    "technique_a": "graph traversal",
+    "technique_b": "graph traversal",
+    "human": null
+  },
+  {
+    "a": "reorganize-string",
+    "a_title": "Reorganize String",
+    "b": "task-scheduler",
+    "b_title": "Task Scheduler",
+    "same_technique_by_labels": true,
+    "technique_a": "heap",
+    "technique_b": "heap",
+    "human": null
+  },
+  {
+    "a": "generate-parentheses",
+    "a_title": "Generate Parentheses",
+    "b": "letter-combinations-of-a-phone-number",
+    "b_title": "Letter Combinations of a Phone Number",
+    "same_technique_by_labels": true,
+    "technique_a": "backtracking",
+    "technique_b": "backtracking",
+    "human": null
+  },
+  {
+    "a": "combination-sum",
+    "a_title": "Combination Sum",
+    "b": "combination-sum-ii",
+    "b_title": "Combination Sum II",
+    "same_technique_by_labels": true,
+    "technique_a": "backtracking",
+    "technique_b": "backtracking",
+    "human": null
+  },
+  {
+    "a": "3sum",
+    "a_title": "3Sum",
+    "b": "4sum",
+    "b_title": "4Sum",
+    "same_technique_by_labels": true,
+    "technique_a": "two pointers",
+    "technique_b": "two pointers",
+    "human": null
+  },
+  {
+    "a": "contains-duplicate",
+    "a_title": "Contains Duplicate",
+    "b": "contains-duplicate-ii",
+    "b_title": "Contains Duplicate II",
+    "same_technique_by_labels": false,
+    "technique_a": "arrays & hashing",
+    "technique_b": "sliding window",
+    "human": null
+  },
+  {
+    "a": "daily-temperatures",
+    "a_title": "Daily Temperatures",
+    "b": "online-stock-span",
+    "b_title": "Online Stock Span",
+    "same_technique_by_labels": true,
+    "technique_a": "stack",
+    "technique_b": "stack",
+    "human": null
+  },
+  {
+    "a": "binary-tree-inorder-traversal",
+    "a_title": "Binary Tree Inorder Traversal",
+    "b": "kth-smallest-element-in-a-bst",
+    "b_title": "Kth Smallest Element in a BST",
+    "same_technique_by_labels": true,
+    "technique_a": "trees",
+    "technique_b": "trees",
+    "human": null
+  },
+  {
+    "a": "best-time-to-buy-and-sell-stock-ii",
+    "a_title": "Best Time to Buy and Sell Stock II",
+    "b": "best-time-to-buy-and-sell-stock-with-cooldown",
+    "b_title": "Best Time to Buy and Sell Stock with Cooldown",
+    "same_technique_by_labels": false,
+    "technique_a": "greedy",
+    "technique_b": "unknown",
+    "human": null
+  },
+  {
+    "a": "find-the-duplicate-number",
+    "a_title": "Find the Duplicate Number",
+    "b": "single-number",
+    "b_title": "Single Number",
+    "same_technique_by_labels": false,
+    "technique_a": "arrays & hashing",
+    "technique_b": "bit manipulation",
+    "human": null
+  },
+  {
+    "a": "valid-palindrome",
+    "a_title": "Valid Palindrome",
+    "b": "valid-palindrome-ii",
+    "b_title": "Valid Palindrome II",
+    "same_technique_by_labels": true,
+    "technique_a": "two pointers",
+    "technique_b": "two pointers",
+    "human": null
+  },
+  {
+    "a": "reverse-linked-list",
+    "a_title": "Reverse Linked List",
+    "b": "reverse-linked-list-ii",
+    "b_title": "Reverse Linked List II",
+    "same_technique_by_labels": false,
+    "technique_a": "two pointers",
+    "technique_b": "linked list",
+    "human": null
+  },
+  {
+    "a": "count-prefix-and-suffix-pairs-i",
+    "a_title": "Count Prefix and Suffix Pairs I",
+    "b": "implement-trie-prefix-tree",
+    "b_title": "Implement Trie (Prefix Tree)",
+    "same_technique_by_labels": false,
+    "technique_a": "simulation",
+    "technique_b": "tries",
+    "human": null
+  },
+  {
+    "a": "kth-largest-element-in-a-stream",
+    "a_title": "Kth Largest Element in a Stream",
+    "b": "kth-largest-element-in-an-array",
+    "b_title": "Kth Largest Element in an Array",
+    "same_technique_by_labels": true,
+    "technique_a": "heap",
+    "technique_b": "heap",
+    "human": null
+  },
+  {
+    "a": "counting-bits",
+    "a_title": "Counting Bits",
+    "b": "number-of-1-bits",
+    "b_title": "Number of 1 Bits",
+    "same_technique_by_labels": true,
+    "technique_a": "bit manipulation",
+    "technique_b": "bit manipulation",
+    "human": null
+  },
+  {
+    "a": "merge-sorted-array",
+    "a_title": "Merge Sorted Array",
+    "b": "merge-two-sorted-lists",
+    "b_title": "Merge Two Sorted Lists",
+    "same_technique_by_labels": false,
+    "technique_a": "two pointers",
+    "technique_b": "linked list",
+    "human": null
+  }
+]

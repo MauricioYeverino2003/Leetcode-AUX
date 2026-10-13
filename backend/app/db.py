@@ -189,6 +189,21 @@ async def set_embedding(token: str, id: str, embedding: list[float], model: str)
     )
 
 
+async def list_solutions(token: str, limit: int = 1000) -> list[dict]:
+    """Every solution the caller has, without the code or the embedding —
+    what the recall evaluation reads."""
+    response = await _send(
+        "GET",
+        token,
+        params={
+            "select": f"{EMBED_COLUMNS},difficulty,submitted_at,created_at",
+            "order": "created_at.asc",
+            "limit": str(limit),
+        },
+    )
+    return response.json()
+
+
 async def list_solution_slugs(token: str) -> list[str]:
     """Every problem the caller has a solution for. An import asks for this
     first so it can skip those problems before fetching any code."""
