@@ -164,6 +164,14 @@ those are embedded. `run` then scores `hyde` (best match against any
 approach) and `hyde + statement` beside the plain-statement method, on the
 same queries and labels, and says what each fixes or breaks relative to it.
 
+`hyde` also labels each generated approach with the taxonomy, which gives
+a fourth answer key, *your technique works for it*: a saved solution counts
+for a query when the technique the user used for it is one of the query's
+workable techniques (its approaches' labels plus the user's own). It is
+looser than *same technique* — it credits a solution whose approach is *a*
+way into the problem, not only *the* way the user took — and the closest of
+the four to what the tutor needs.
+
 For each solved problem with a statement and at least one relative,
 retrieval runs with the query's own row excluded, by tags and by embeddings,
 on the same rows with the production floor, and the top k is scored at

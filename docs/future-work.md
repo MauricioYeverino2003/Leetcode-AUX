@@ -93,14 +93,17 @@ all users. Never shown to the user or the tutor.
 the statement (topic) and one of the summary (approach) — and a combined
 score. No extra model call; needs statements for imported rows (§6).
 
-**Tested 2026-10-14, not shipped.** On the same-technique tier HyDE
-reached hit@3 69% against 65% (fixing 11 queries, breaking 5 of 153) and
-gave up two points on the LeetCode-similar tier. Suggestive, not enough to
-pay a model call and several seconds per newly opened problem. The command
-stays in the harness. The next lever for recall quality is the document
-side — statements on the imported rows, and summaries that state their
-technique — judged on the same baselines; and some of the remaining
-"misses" are label granularity rather than retrieval.
+**Tested 2026-10-14, not shipped.** On the strict same-technique key HyDE
+reached hit@3 69% against 65%; on the fairer "your technique works for it"
+key (a saved solution counts when its technique is one of the query's
+workable techniques) it reached 80–81% against 78%, with 10 fixes and 5–7
+breaks of 168. A two-to-four-point edge, not enough to pay a model call and
+several seconds per newly opened problem. The command stays in the
+harness. The fairer key also showed today's recall is better than the
+strict one suggested: 78% is the honest number. The next lever for recall
+quality is the document side — statements on the imported rows, and
+summaries that state their technique — judged on the same baselines; and
+several remaining "misses" are label granularity rather than retrieval.
 
 **Cost.** HyDE: one small-model call per *new* problem (~$0.001 on
 `gpt-5-mini`), nothing for problems already cached; 2–3 embedding calls
@@ -191,8 +194,11 @@ cases already exist; the classifier would reuse them.
   technique labels as two label sets, hit@k / recall@k / MRR for tags vs
   embeddings. Round 2 (same day) added two-level labels — a pattern and
   one of 72 specific techniques, chosen by number — and the DP problems
-  that had come back unknown. Still to do: the 20-pair hand check, which
-  is what puts an error bar on the labels.
+  that had come back unknown. The hand check (16 of 20 answered) put 81%
+  of LeetCode-similar pairs as genuinely solved alike and found the labels
+  agreeing with the human 15 of 16 times. A fourth key, "your technique
+  works for it", built from labeled HyDE approaches, is now the primary
+  metric: embeddings 78% hit@3 vs tags 64%.
 - **Thumbs up / down on replies** in the panel, written to the benchmark
   log: the cheapest way to grow the case set from real use.
 - **An LLM judge**, only once the rubric per case is stable enough to

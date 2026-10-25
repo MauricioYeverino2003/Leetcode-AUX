@@ -405,10 +405,12 @@ async def hyde(token: str | None, yes: bool) -> None:
 
     cache = _load(HYDE_FILE, {})
     todo = [s for s in usable if s not in cache]
+    unlabeled = sum(len(e["approaches"]) for s, e in cache.items() if s in usable and not _approaches_labeled(e))
     provider = get_provider()
     model = settings.summary_model or provider.model
     print(f"{len(usable)} usable problems, {len(cache)} done, {len(todo)} to write approaches for on {model} "
-          f"— rough estimate ${len(todo) * 0.0015:.2f} plus about a cent of embeddings")
+          f"— rough estimate ${len(todo) * 0.0015:.2f} plus about a cent of embeddings; "
+          f"{unlabeled + len(todo) * HYDE_APPROACHES} approach label(s) at about ${(unlabeled + len(todo) * HYDE_APPROACHES) * 0.0003:.2f}")
     if not yes:
         print("Dry run. Re-run with --yes to spend it.")
         return
@@ -433,7 +435,34 @@ async def hyde(token: str | None, yes: bool) -> None:
         _save(HYDE_FILE, cache)
         print(f"  [{i}/{len(todo)}] {slug}: {len(approaches)} approach(es) — {approaches[0][:70]}…")
 
+    # Label each approach with the taxonomy. A problem's workable techniques
+    # — the labels of its approaches — are the fourth answer key: "the
+    # technique you used for A is one of the ways into B".
+    to_label = [s for s in usable if s in cache and not _approaches_labeled(cache[s])]
+    for i, slug in enumerate(to_label, 1):
+        entry = cache[slug]
+        labels: list[str | None] = []
+        for approach in entry["approaches"]:
+            choice = None
+            for attempt in range(2):
+                instructions = LABEL_PROMPT if attempt == 0 else LABEL_PROMPT + "\n\nReply with the number only."
+                response = await provider.complete(
+                    instructions=instructions, text=approach, effort="low", model=settings.summary_model
+                )
+                choice = parse_choice(response.reply)
+                if choice:
+                    break
+            labels.append(choice[1] if choice else None)
+        entry["techniques"] = labels
+        _save(HYDE_FILE, cache)
+        print(f"  [{i}/{len(to_label)}] {slug}: {', '.join(t or '?' for t in labels)}")
+
     print(f"{len(cache)} problems -> {HYDE_FILE}")
+
+
+def _approaches_labeled(entry: dict) -> bool:
+    labels = entry.get("techniques")
+    return isinstance(labels, list) and len(labels) == len(entry.get("approaches", []))
 
 
 def merge_candidates(lists: list[list[dict]]) -> list[dict]:
@@ -480,6 +509,28 @@ def pattern_relevant(techniques: dict, solved: set[str]) -> dict[str, set[str]]:
 
 def technique_relevant(techniques: dict, solved: set[str]) -> dict[str, set[str]]:
     return _group_relevant(techniques, solved, 1)
+
+
+def workable_relevant(techniques: dict, hyde_cache: dict, solved: set[str]) -> dict[str, set[str]]:
+    """A is relevant to B when the user's technique for A is one of B's
+    workable techniques: the labels of B's generated approaches plus the
+    user's own label for B. Looser than same-technique — it credits a
+    solution whose approach is *a* way into B, not only *the* way the user
+    took — and closer to what the tutor needs."""
+    by_technique: dict[str, set[str]] = {}
+    for a in solved:
+        t = labels_of(techniques, a)[1]
+        if t:
+            by_technique.setdefault(t, set()).add(a)
+
+    related: dict[str, set[str]] = {}
+    for b in solved:
+        workable = {t for t in (hyde_cache.get(b, {}).get("techniques") or []) if t}
+        own = labels_of(techniques, b)[1]
+        if own:
+            workable.add(own)
+        related[b] = set().union(*(by_technique.get(t, set()) for t in workable)) - {b} if workable else set()
+    return related
 
 
 # --- metrics (pure) ------------------------------------------------------------
@@ -606,6 +657,13 @@ async def run(token: str | None) -> None:
     if hyde_cache and missing_hyde:
         print(f"HyDE cache lacks {len(missing_hyde)} of {len(queries)} queries — run `hyde --yes`; skipping HyDE methods")
 
+    # The fourth answer key needs every query's approaches labeled.
+    if use_hyde and techniques:
+        if all(_approaches_labeled(hyde_cache[s]) for s in queries):
+            tiers["your technique works for it"] = workable_relevant(techniques, hyde_cache, solved)
+        else:
+            print("HyDE approaches are not all labeled — run `hyde --yes`; skipping the fourth tier")
+
     # method -> slug -> ranked slugs (top 5)
     methods = ["tags", "embeddings", "embeddings, no floor"] + (["hyde", "hyde + statement"] if use_hyde else [])
     results: dict[str, dict[str, list[str]]] = {m: {} for m in methods}
@@ -682,6 +740,10 @@ def build_report(problems, techniques, tiers, results, detail, solved, n_rows) -
     out.append("- **same pattern**: the saved solutions share a coarse pattern (one of 19). Big buckets; a hit says little.")
     out.append("- **same technique**: the saved solutions share a specific technique (one of "
                f"{len(TAXONOMY)}, `app/recall_eval.py`). This is \"solved similarly\".")
+    if "your technique works for it" in tiers:
+        out.append("- **your technique works for it**: the technique the user used for the saved solution is one "
+                   "of the query problem's workable techniques — the labels of its generated approaches plus the "
+                   "user's own. Looser than same technique; closest to what the tutor needs.")
     out.append("")
     if "hyde" in results:
         out.append(f"Methods: **tags** (topic-tag overlap); **embeddings** (the problem's statement embedded, "
@@ -723,12 +785,17 @@ def build_report(problems, techniques, tiers, results, detail, solved, n_rows) -
         if pairs:
             same_p = sum(1 for a, b in pairs if b in tiers["same pattern"].get(a, set()))
             same_t = sum(1 for a, b in pairs if b in tiers["same technique"].get(a, set()))
-            out.append(f"**Label agreement:** of {len(pairs)} LeetCode-similar pairs, {same_p} "
-                       f"({100 * same_p / len(pairs):.0f}%) share a pattern and {same_t} "
-                       f"({100 * same_t / len(pairs):.0f}%) share a technique.")
+            line = (f"**Label agreement:** of {len(pairs)} LeetCode-similar pairs, {same_p} "
+                    f"({100 * same_p / len(pairs):.0f}%) share a pattern and {same_t} "
+                    f"({100 * same_t / len(pairs):.0f}%) share a technique")
+            if "your technique works for it" in tiers:
+                works = sum(1 for a, b in pairs if b in tiers["your technique works for it"].get(a, set()))
+                line += f"; for {works} ({100 * works / len(pairs):.0f}%) one's technique works for the other"
+            out.append(line + ".")
             out.append("")
 
-    tier_name = "same technique" if techniques else "LeetCode similar"
+    tier_name = ("your technique works for it" if "your technique works for it" in tiers
+                 else "same technique" if techniques else "LeetCode similar")
     relevant = tiers[tier_name]
     scored = [s for s in results["tags"] if relevant.get(s)]
 

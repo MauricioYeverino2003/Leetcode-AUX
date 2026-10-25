@@ -662,6 +662,23 @@ and III at 0.72 and marked wrong because those were labeled take-or-skip),
 and the generated approaches describe the canonical solution where the
 summaries describe the user's own.
 
+**A fairer key, same verdict (2026-10-14).** Mauko pointed out that the
+same-technique key was stricter than the definition we want: it credits A
+for B only when the user solved both with the same labeled technique,
+whereas A is useful for B when the way the user solved A is *a* good way
+into B — whichever way they later took. So the generated approaches were
+labeled with the taxonomy too, giving a fourth key, *your technique works
+for it*: A counts when the user's technique for A is among B's approaches'
+labels or B's own. On it, over 168 queries: tags 64%, embeddings 78%,
+hyde 80%, hyde + statement 81% (MRR 0.53 / 0.66 / 0.70 / 0.71). Two things
+followed. Today's recall was being underrated by the strict key — 78%, not
+65%, is the honest "finds a solution whose approach carries over" number,
+not far from the 85% on LeetCode's labels. And HyDE's lead shrank rather
+than grew (10 fixes, 5–7 breaks of 168), so the no-ship decision stands on
+the right metric. The misses that remain are mostly label granularity
+(Stone Game's approaches labeled interval and game DP; II and III solved
+under take-or-skip). The fourth key is the primary one from here.
+
 **What stays.** The `hyde` command and the two scored variants remain in
 `app/recall_eval.py`, so any future document-side change (statements on the
 rows, summaries that state their technique) is scored against the same
@@ -775,6 +792,24 @@ recursively" finer than a person would. The three human "no"s (Maximum
 Product Subarray / Product of Array Except Self, Contains Duplicate / II,
 Stock II / Stock with Cooldown) are the same-series-different-technique
 cases the evaluation exists to catch, and the labels caught all three.
+
+**What the headline numbers can claim (2026-10-14).** The fourth key, *your
+technique works for it* (recorded under the HyDE entry), is the primary
+metric: embeddings hit@3 78% against tags 64% over 168 queries. The
+comparison is paired, and the paired counts are the better evidence: the
+two methods disagree on 41 queries, embeddings winning 32 and tags 9
+(McNemar p < 0.001). Two qualifications that an outside review of the
+numbers raised and that stay true. The queries share one corpus and fall
+into problem families (Stone Game I–III), so the test supports a
+difference on this history, not on independent future problems or other
+users' histories. And keeping the embeddings out of every key closes one
+leakage route — the method under test cannot shape its own key — but not
+label noise or bias from model-written technique descriptions; the hand
+check (15 of 16 agreements) bounds that, it does not remove it. The primary
+key is built from the same generated approaches HyDE queries with, so if
+it is biased it favours HyDE, which still gained only two to three points.
+Consistency across keys is the strongest single fact: embeddings beat tags
+at hit@3 and MRR on all four.
 
 ---
 
